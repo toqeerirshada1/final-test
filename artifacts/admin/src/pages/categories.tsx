@@ -98,6 +98,8 @@ export default function CategoriesPage() {
 
   const flatCategories = categories.flatMap(c => [c, ...(c.children || [])]);
 
+  const showLoadMore = !showAllCats && filteredCategories.length > 200;
+
   /* ── Mutations ── */
   type SaveCategoryBody = {
     name: string;
@@ -335,6 +337,7 @@ export default function CategoriesPage() {
           </div>
         ) : (
           /* Normal view: drag-and-drop enabled */
+          <>
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="top-level" type="TOP_LEVEL">
               {(provided, snapshot) => (
@@ -491,12 +494,13 @@ export default function CategoriesPage() {
               )}
             </Droppable>
           </DragDropContext>
-          {!showAllCats && filteredCategories.length > 200 && (
+          {showLoadMore && (
             <div className="flex flex-col items-center gap-1 pt-2">
               <p className="text-xs text-muted-foreground">{filteredCategories.length - 200} more categories not shown.</p>
               <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setShowAllCats(true)}>Load more</Button>
             </div>
           )}
+          </>
         )}
       </div>
 
