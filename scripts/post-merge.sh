@@ -47,7 +47,7 @@ for sql_file in $(ls "$MIGRATION_DIR"/*.sql 2>/dev/null | sort); do
   if [ "$already_applied" -eq "0" ]; then
     echo "[migration] Applying $filename..."
     psql "$DB_URL" -f "$sql_file" 2>&1 && \
-      psql "$DB_URL" -c "INSERT INTO _schema_migrations (filename) VALUES ('$filename');" 2>&1
+      psql "$DB_URL" -c "INSERT INTO _schema_migrations (filename) VALUES ('$filename') ON CONFLICT DO NOTHING;" 2>&1
     echo "[migration] Applied $filename"
   else
     echo "[migration] Skipping $filename (already applied)"
