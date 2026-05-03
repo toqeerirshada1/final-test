@@ -3,6 +3,11 @@
 /* ──────────────────────────────────────────────────────────────────────────── */
 
 /* ── OTP Bypass Audit Log ───────────────────────────────────────────────────── */
+/* NOTE: On some environments this table was pre-created by early bootstrap code
+   with a different shape (id, event_type, admin_id, target_id, details,
+   created_at). The ALTER TABLE statements below bring those environments up to
+   the canonical schema without breaking fresh deployments where CREATE TABLE
+   already added every column. */
 CREATE TABLE IF NOT EXISTS otp_bypass_audit (
   id              VARCHAR(36)  PRIMARY KEY,
   event_type      VARCHAR(100) NOT NULL,
@@ -23,6 +28,15 @@ CREATE TABLE IF NOT EXISTS otp_bypass_audit (
 
   created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS user_id       VARCHAR(36);
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS phone         VARCHAR(20);
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS email         VARCHAR(255);
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS bypass_reason VARCHAR(100);
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS expires_at    TIMESTAMP NULL;
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS ip_address    VARCHAR(45);
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS user_agent    VARCHAR(500);
+ALTER TABLE otp_bypass_audit ADD COLUMN IF NOT EXISTS metadata      JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_otp_bypass_audit_event_type ON otp_bypass_audit (event_type);
 CREATE INDEX IF NOT EXISTS idx_otp_bypass_audit_user_id    ON otp_bypass_audit (user_id);
