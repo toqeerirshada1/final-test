@@ -42,6 +42,40 @@ PostgreSQL is the chosen database, with schema managed by Drizzle ORM. Drizzle K
 -   **Admin-Driven Configuration**: Most business logic and feature toggles are controllable via the admin panel, reducing the need for code redeploys.
 -   **Manual Payment Verification**: Aligns with local payment habits and avoids initial gateway fees by supporting bank transfers with admin verification.
 
+## Development Setup
+
+### Prerequisites
+This is a pnpm workspace monorepo. All dependencies must be installed from the workspace root before starting any artifact.
+
+```bash
+pnpm install
+```
+
+### Workflows & Ports
+Each artifact runs as a separate Replit workflow. After `pnpm install`, restart each workflow to pick up the installed `node_modules`.
+
+| Workflow name | Preview path | Port |
+|---|---|---|
+| `artifacts/admin: web` | `/admin/` | 23744 (dynamic) |
+| `artifacts/vendor-app: web` | `/vendor/` | dynamic |
+| `artifacts/rider-app: web` | `/rider/` | dynamic |
+| `artifacts/mockup-sandbox: Component Preview Server` | `/__mockup` | dynamic |
+| `artifacts/api-server: API Server` | `/api` | 8080 |
+| `artifacts/ajkmart: expo` | `/` | dynamic |
+
+### Shared Libraries
+The monorepo contains shared libraries under `lib/` that are consumed by the artifacts via workspace `*` references:
+- `@workspace/db` — Drizzle ORM schema and migration utilities
+- `@workspace/api-client-react` — typed API client with React Query hooks
+- `@workspace/api-spec` / `@workspace/api-zod` — Zod-validated API contracts
+- `@workspace/i18n` — trilingual string catalogue (English / Urdu / Roman Urdu)
+- `@workspace/service-constants` — shared enums, IDs, and feature flags
+- `@workspace/auth-utils` — JWT helpers shared between server and clients
+- `@workspace/admin-timing-shared` — time-slot utilities for the admin panel
+
+### Environment Variables
+Secrets and environment variables are managed via Replit's environment secrets system. The project ships an encrypted `.env` bundle (`scripts/decrypt.mjs`). For local/VPS development use `pnpm run env` to decrypt it.
+
 ## External Dependencies
 
 ### Core Runtime & Frameworks
