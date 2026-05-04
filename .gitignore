@@ -48,6 +48,14 @@ Thumbs.db
 .cache/
 .local/
 .env
+*.env
+*.plaintext
+*.key
 
 # Backup files (may contain secrets)
 *.backup
+
+# Encrypted secrets — must be committed
+!secrets.enc
+!.replit
+!replit.nix
