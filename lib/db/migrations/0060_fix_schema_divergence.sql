@@ -16,12 +16,22 @@ ALTER TABLE admin_audit_log
   ADD COLUMN IF NOT EXISTS result varchar(20) NOT NULL DEFAULT 'success',
   ADD COLUMN IF NOT EXISTS reason text;
 
--- Back-fill event from the legacy 'action' column for any existing rows
-UPDATE admin_audit_log SET event = action WHERE event = '' AND action IS NOT NULL;
-
--- The legacy 'action' column is NOT NULL with no default; give it a default so
--- Drizzle inserts (which only supply 'event', not 'action') don't violate it.
-ALTER TABLE admin_audit_log ALTER COLUMN action SET DEFAULT '';
+-- Back-fill event from the legacy 'action' column for any existing rows.
+-- This is guarded so the migration can run safely on databases where the
+-- legacy action column has already been removed.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'admin_audit_log'
+      AND column_name = 'action'
+  ) THEN
+    UPDATE admin_audit_log SET event = action WHERE event = '' AND action IS NOT NULL;
+    ALTER TABLE admin_audit_log ALTER COLUMN action SET DEFAULT '';
+  END IF;
+END
+$$;
 
 CREATE INDEX IF NOT EXISTS admin_audit_log_event_idx ON admin_audit_log(event);
 
@@ -67,15 +77,47 @@ ALTER TABLE van_bookings
   ADD COLUMN IF NOT EXISTS cancelled_at         timestamp,
   ADD COLUMN IF NOT EXISTS cancellation_reason  text;
 
--- Back-fill fare from total_amount for existing rows so NOT NULL can be set
-UPDATE van_bookings SET fare = total_amount WHERE fare IS NULL AND total_amount IS NOT NULL;
-UPDATE van_bookings SET fare = 0 WHERE fare IS NULL;
+-- Back-fill fare from total_amount for existing rows so NOT NULL can be set.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'van_bookings'
+      AND column_name = 'total_amount'
+  ) THEN
+    UPDATE van_bookings SET fare = total_amount WHERE fare IS NULL AND total_amount IS NOT NULL;
+  END IF;
+  UPDATE van_bookings SET fare = 0 WHERE fare IS NULL;
+END
+$$;
 
--- Back-fill route_id from the related schedule
-UPDATE van_bookings vb
-  SET route_id = vs.route_id
-  FROM van_schedules vs
-  WHERE vb.route_id IS NULL AND vb.schedule_id = vs.id;
+-- Back-fill route_id from the related schedule.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'van_bookings'
+      AND column_name = 'route_id'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'van_schedules'
+      AND column_name = 'route_id'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'van_schedules'
+      AND column_name = 'id'
+  ) THEN
+    UPDATE van_bookings vb
+      SET route_id = vs.route_id
+      FROM van_schedules vs
+      WHERE vb.route_id IS NULL AND vb.schedule_id = vs.id;
+  END IF;
+END
+$$;
 
 -- Add travel_date index (schema defines it)
 CREATE INDEX IF NOT EXISTS van_bookings_travel_date_idx ON van_bookings(travel_date);
