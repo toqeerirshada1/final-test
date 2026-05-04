@@ -13,13 +13,17 @@ export interface AuthConfig {
   bypassMessage?: string | null;
 }
 
+const CACHE_TTL_MS = 5 * 60 * 1000;  // 5 minute cache
+const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minute poll (was 30s causing 429 errors)
+
 /**
  * useOTPBypass hook for Vendor App
  *
  * When `phone` is provided, queries /auth/otp-status?phone= for per-user,
  * global, timed-disable, and whitelist bypass state (in priority order).
  * Without a phone, falls back to /auth/config for global-only state.
- * Refreshes every 30 seconds and caches in localStorage for resilience.
+ * Polls every 5 minutes (was 30s causing rate limit 429 errors).
+ * Skips fetch if cache is fresh to avoid unnecessary requests.
  */
 export const useOTPBypass = (phone?: string) => {
   const [bypassActive, setBypassActive] = useState(false);
@@ -28,6 +32,7 @@ export const useOTPBypass = (phone?: string) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let abortController = new AbortController();
     const cacheKey = phone ? `otpBypassCache_${phone}` : "authConfigCache";
     const cacheTimeKey = phone ? `otpBypassCacheTime_${phone}` : "authConfigCacheTime";
 
@@ -39,12 +44,28 @@ export const useOTPBypass = (phone?: string) => {
     };
 
     const fetchStatus = async () => {
+      if (abortController.signal.aborted) return;
+
       try {
+        // Skip fetch if cache is fresh
+        const cacheTime = localStorage.getItem(cacheTimeKey);
+        if (cacheTime && Date.now() - parseInt(cacheTime, 10) < CACHE_TTL_MS) {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            try { applyData(JSON.parse(cached)); } catch {}
+            setLoading(false);
+            return;
+          }
+        }
+
         setLoading(true);
         const url = phone
           ? `/api/auth/otp-status?phone=${encodeURIComponent(phone)}`
           : "/api/auth/config";
-        const response = await fetch(url, { headers: { "Content-Type": "application/json" } });
+        const response = await fetch(url, { 
+          headers: { "Content-Type": "application/json" },
+          signal: abortController.signal,
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         applyData(data);
@@ -69,8 +90,11 @@ export const useOTPBypass = (phone?: string) => {
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchStatus, POLL_INTERVAL_MS);
+    return () => {
+      abortController.abort();
+      clearInterval(interval);
+    };
   }, [phone]);
 
   const remainingSeconds = bypassExpiresAt

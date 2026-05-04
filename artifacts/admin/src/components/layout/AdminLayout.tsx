@@ -80,6 +80,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const langRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
   const mobileDrawerRef = useRef<HTMLDivElement>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed(c => {
@@ -145,6 +146,30 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         next.add(active.key);
         return next;
       });
+    }
+
+    // Restore sidebar scroll position and scroll active item into view
+    if (sidebarScrollRef.current) {
+      const scrollKey = `sidebar_scroll_${location}`;
+      const savedScroll = sessionStorage.getItem(scrollKey);
+      if (savedScroll) {
+        const scrollPos = parseInt(savedScroll, 10);
+        setTimeout(() => {
+          if (sidebarScrollRef.current) {
+            sidebarScrollRef.current.scrollTop = scrollPos;
+          }
+        }, 0);
+      } else {
+        // If no saved position, scroll active item into view
+        setTimeout(() => {
+          if (sidebarScrollRef.current) {
+            const activeElement = sidebarScrollRef.current.querySelector('[data-sidebar-active="true"]');
+            if (activeElement) {
+              activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }
+        }, 50);
+      }
     }
   }, [location]);
 
@@ -337,9 +362,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
-                <Link key={href} href={item.href} onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                <Link key={href} href={item.href} onClick={() => {
+                  // Store scroll position before navigating
+                  if (sidebarScrollRef.current) {
+                    const scrollKey = `sidebar_scroll_${item.href}`;
+                    sessionStorage.setItem(scrollKey, String(sidebarScrollRef.current.scrollTop));
+                  }
+                  isMobile && setIsMobileMenuOpen(false);
+                }}>
                   <div
                     className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg admin-transition cursor-pointer group"
+                    data-sidebar-active={active ? "true" : "false"}
                     style={{
                       background: active ? "rgba(99,102,241,0.14)" : "transparent",
                       border: active ? "1px solid rgba(99,102,241,0.25)" : "1px solid transparent",
@@ -370,6 +403,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
       {/* Nav groups */}
       <div
+        ref={sidebarScrollRef}
         className="flex-1 overflow-y-auto py-2"
         style={{ scrollbarWidth: "none" }}
       >
@@ -445,9 +479,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     const isFav = favorites.includes(item.href);
 
                     const itemNode = (
-                      <Link key={item.href} href={item.href} onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                      <Link key={item.href} href={item.href} onClick={() => {
+                        // Store scroll position before navigating
+                        if (sidebarScrollRef.current) {
+                          const scrollKey = `sidebar_scroll_${item.href}`;
+                          sessionStorage.setItem(scrollKey, String(sidebarScrollRef.current.scrollTop));
+                        }
+                        isMobile && setIsMobileMenuOpen(false);
+                      }}>
                         <div
                           className="flex items-center transition-all duration-150 cursor-pointer group relative"
+                          data-sidebar-active={active ? "true" : "false"}
                           style={{
                             borderRadius: 10,
                             padding: showMini ? "10px 0" : "8px 10px",
