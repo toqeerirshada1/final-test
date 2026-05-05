@@ -32,6 +32,18 @@ args = "check-permissions"
 task = "workflow.run"
 args = "Start application"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Admin Panel"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Rider App"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Vendor App"
+
 [[workflows.workflow]]
 name = "check-permissions"
 author = "agent"
@@ -47,13 +59,49 @@ isValidation = true
 name = "Start application"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node scripts/launchers/start.mjs replit"
-waitForPort = 8080
+args = "pnpm --filter @workspace/api-server dev"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Admin Panel"
+author = "agent"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3000 BASE_PATH=/admin/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/admin dev"
+waitForPort = 3000
+
+[[workflows.workflow]]
+name = "Rider App"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3001 BASE_PATH=/rider/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/rider-app dev"
+waitForPort = 3001
+
+[[workflows.workflow]]
+name = "Vendor App"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
+waitForPort = 3002
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -70,9 +118,40 @@ packages = ["cargo", "libiconv", "libxcrypt", "openssl", "pkg-config", "psmisc",
 [userenv]
 
 [userenv.shared]
+ADMIN_SEED_USERNAME = "superadmin"
+ADMIN_SEED_PASSWORD = "Admin@123"
+ADMIN_SEED_EMAIL = "admin@ajkmart.com"
+ADMIN_SEED_NAME = "Super Admin"
+PORT = "5000"
+PORT_FALLBACK_ENABLE = "true"
+PORT_MAX_RETRIES = "10"
+LOG_LEVEL = "debug"
+NODE_ENV = "development"
+ADMIN_LEGACY_AUTH_DISABLED = "0"
+ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN = "15"
+JWT_ISSUER = "ajkmart-dev"
+GEMINI_API_KEY = ""
+FIREBASE_PROJECT_ID = ""
+FIREBASE_CLIENT_EMAIL = ""
+FIREBASE_PRIVATE_KEY = ""
+TWILIO_ACCOUNT_SID = ""
+TWILIO_AUTH_TOKEN = ""
+TWILIO_FROM_NUMBER = ""
+SENDGRID_API_KEY = ""
+SMTP_HOST = ""
+GOOGLE_MAPS_API_KEY = ""
+OSRM_API_URL = ""
+REDIS_URL = ""
+SENTRY_DSN = ""
+VAPID_PRIVATE_KEY = ""
+VAPID_PUBLIC_KEY = ""
+VAPID_CONTACT_EMAIL = ""
+ALLOWED_ORIGINS = ""
+ADMIN_DEV_PORT = "3000"
+VENDOR_DEV_PORT = "3002"
+RIDER_DEV_PORT = "3001"
 
 [userenv.production]
-LOG_LEVEL = "warn"
 
 [userenv.development]
 VITE_API_PROXY_TARGET = "http://127.0.0.1:8080"
@@ -109,3 +188,15 @@ externalPort = 3000
 [[ports]]
 localPort = 23745
 externalPort = 3001
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 3002
+externalPort = 3002

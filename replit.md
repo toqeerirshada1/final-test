@@ -53,17 +53,17 @@ This is a pnpm workspace monorepo. All dependencies must be installed from the w
 pnpm install
 ```
 
-### Workflows & Ports
-Each artifact runs as a separate Replit workflow. After `pnpm install`, restart each workflow to pick up the installed `node_modules`.
+### Workflows & Ports (Replit)
+All services are managed as separate Replit workflows. The API server proxies frontend apps through its dev proxy middleware.
 
 | Workflow name | Preview path | Port |
 |---|---|---|
-| `artifacts/admin: web` | `/admin/` | 23744 |
-| `artifacts/vendor-app: web` | `/vendor/` | 23745 |
-| `artifacts/rider-app: web` | `/rider/` | 22969 |
-| `artifacts/mockup-sandbox: Component Preview Server` | `/__mockup` | 20716 |
-| `artifacts/api-server: API Server` | `/api` | 8080 |
-| `artifacts/ajkmart: expo` | `/` | 5000 |
+| `Start application` | `/` (hub), `/api` | 5000 |
+| `Admin Panel` | `/admin/` | 3000 |
+| `Rider App` | `/rider/` | 3001 |
+| `Vendor App` | `/vendor/` | 3002 |
+
+The API server at port 5000 proxies `/admin/`, `/rider/`, `/vendor/` to the respective frontend Vite servers. All apps load correctly without separate port access.
 
 ### Shared Libraries
 The monorepo contains shared libraries under `lib/` that are consumed by the artifacts via workspace `*` references:
@@ -78,11 +78,19 @@ The monorepo contains shared libraries under `lib/` that are consumed by the art
 - `@workspace/integrations` — shared integration helpers and adapters
 - `@workspace/integrations-gemini-ai` — Gemini AI integration utilities
 
-### Environment Variables
+### Environment Variables (Replit Migration)
 
-Environment variables are managed via an AES-256-GCM encrypted file (`.env.enc`). The system uses `scripts/env-manager.mjs` — a full interactive encrypted env management tool with 7-attempt lockout, hidden password input (Tab to toggle visibility), auto-generated secrets, and auto-backup on reset.
+On Replit, environment variables are managed via Replit's Secrets panel and `[userenv]` in `.replit`. A `.env` file is generated at the project root with all required values — this replaces the encrypted `.env.enc` flow used in other environments.
 
-**Commands:**
+**To add optional API keys** (Firebase, Twilio, Gemini, etc.), use the Secrets panel in Replit. The keys the app looks for:
+- `GEMINI_API_KEY` — Gemini AI features
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` — Push notifications
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` — SMS OTP
+- `SENDGRID_API_KEY` — Email delivery
+- `GOOGLE_MAPS_API_KEY` — Maps features
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACT_EMAIL` — Web push
+
+The `.env.enc` encrypted file system is still available for non-Replit environments:
 ```bash
 pnpm env:create    # First-time setup — set master password, generate .env.enc
 pnpm env:decrypt   # Unlock .env.enc → writes .env + loads into process

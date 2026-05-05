@@ -12,7 +12,26 @@
 
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
+import { readFileSync, existsSync } from "fs";
 import path from "path";
+
+// Load root .env before spawning tsx so secrets (JWT_SECRET, etc.) are available
+function loadRootEnv() {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const envPath = path.resolve(__dirname, "../../../.env");
+  if (!existsSync(envPath)) return;
+  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const i = trimmed.indexOf("=");
+    if (i === -1) continue;
+    const key = trimmed.slice(0, i).trim();
+    const value = trimmed.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
+loadRootEnv();
 
 const _rawDelay = parseInt(process.env.RESTART_DELAY_SECONDS ?? "2", 10);
 const RESTART_DELAY_MS = (Number.isFinite(_rawDelay) && _rawDelay >= 0 ? _rawDelay : 2) * 1000;

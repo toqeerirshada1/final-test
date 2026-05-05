@@ -1,3 +1,8 @@
 #!/bin/bash
-export DATABASE_URL="postgresql://neondb_owner:npg_5VFzHmZ6NTWn@ep-solitary-credit-a188hgj0-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+# Load .env if DATABASE_URL is not already set from environment
+if [ -z "$DATABASE_URL" ] && [ -f "../../.env" ]; then
+  set -a
+  source ../../.env
+  set +a
+fi
 pnpm run start
