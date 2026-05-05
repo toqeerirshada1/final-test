@@ -41,7 +41,8 @@
     "env:show": "node scripts/env-manager.mjs show",
     "env:verify": "node scripts/env-manager.mjs verify",
     "env:export": "node scripts/env-manager.mjs export",
-    "env:reset": "node scripts/env-manager.mjs reset"
+    "env:reset": "node scripts/env-manager.mjs reset",
+    "setup": "bash scripts/setup.sh"
   },
   "private": true,
   "devDependencies": {

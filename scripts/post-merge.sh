@@ -64,7 +64,7 @@ pnpm --filter @workspace/phone-utils build 2>/dev/null || echo "[post-merge] WAR
 
 # ─── MIGRATIONS ───────────────────────────────────────────────────────────────
 MIGRATION_DIR="lib/db/migrations"
-DB_URL="${NEON_DATABASE_URL:-${APP_DATABASE_URL:-$DATABASE_URL}}"
+DB_URL="${DATABASE_URL}"
 
 if [ -z "$DB_URL" ]; then
   echo "[post-merge] Skipping migrations — no DATABASE_URL set."

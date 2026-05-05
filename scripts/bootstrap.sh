@@ -51,15 +51,20 @@ if [ -z "${VITE_API_PROXY_TARGET:-}" ]; then export VITE_API_PROXY_TARGET="http:
 DB_STAMP="node_modules/.bootstrap-db-stamp"
 DB_URL="${DATABASE_URL:-}"
 
-if [ -n "$DB_URL" ]; then
-  if [ ! -f "$DB_STAMP" ]; then
-    echo "[bootstrap] Running pnpm db:push (first boot)..."
-    pnpm db:push && touch "$DB_STAMP" && echo "[bootstrap] Schema pushed successfully."
-  else
-    echo "[bootstrap] DB already pushed — skipping (delete node_modules/.bootstrap-db-stamp to force)"
-  fi
+if [ -z "$DB_URL" ]; then
+  echo ""
+  echo "[bootstrap] ERROR: DATABASE_URL is not set."
+  echo "[bootstrap] Add it to [userenv.shared] in .replit or as a Replit Secret."
+  echo "[bootstrap] Expected format: postgresql://<user>:<pass>@<host>/<db>?sslmode=require"
+  echo ""
+  exit 1
+fi
+
+if [ ! -f "$DB_STAMP" ]; then
+  echo "[bootstrap] Running pnpm db:push (first boot)..."
+  pnpm db:push && touch "$DB_STAMP" && echo "[bootstrap] Schema pushed successfully."
 else
-  echo "[bootstrap] DATABASE_URL not set — skipping db:push"
+  echo "[bootstrap] DB already pushed — skipping (delete node_modules/.bootstrap-db-stamp to force)"
 fi
 
 echo "[bootstrap] Bootstrap complete."
