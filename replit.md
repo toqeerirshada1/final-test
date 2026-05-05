@@ -24,7 +24,7 @@ The project is structured as a pnpm workspace monorepo, enforcing pnpm usage. It
 
 ### Backend Architecture
 
-The backend leverages Express with Zod validation, JWT-based authentication, CSRF protection, and rate limiting. Socket.IO facilitates real-time events. A multi-method authentication system supports Phone/Email OTP, Username/Password, OAuth, magic links, and TOTP 2FA, with methods togglable via platform configuration. A hybrid wallet model manages commissions and rider balances, with atomic transactions for critical operations. A central platform configuration endpoint allows dynamic control over features, pricing, and service settings.
+The backend leverages Express with Zod validation, JWT-based authentication, CSRF protection, rate limiting, and structured logging. Socket.IO facilitates real-time events. A multi-method authentication system supports Phone/Email OTP, Username/Password, OAuth, magic links, and TOTP 2FA, with methods togglable via platform configuration. It also uses Redis-backed rate limiting, Firebase admin services, Twilio, Nodemailer, web push, QR code generation, image processing, and AI integrations where needed. A hybrid wallet model manages commissions and rider balances, with atomic transactions for critical operations. A central platform configuration endpoint allows dynamic control over features, pricing, and service settings.
 
 ### Frontend Architecture
 
