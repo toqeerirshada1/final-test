@@ -26,26 +26,33 @@ export const accountConditionsTable = pgTable("account_conditions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [index("ac_u_idx").on(t.userId), index("ac_t_idx").on(t.conditionType)]);
+
 export const conditionRulesTable = pgTable("condition_rules", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  description: text("description"),
   targetRole: text("target_role").notNull(),
   metric: text("metric").notNull(),
   operator: text("operator").notNull(),
   threshold: text("threshold").notNull(),
   conditionType: conditionTypeEnum("condition_type").notNull(),
   severity: conditionSeverityEnum("severity").notNull(),
+  cooldownHours: integer("cooldown_hours").notNull().default(24),
+  modeApplicability: text("mode_applicability").notNull().default("default,ai_recommended,custom"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
 export const conditionSettingsTable = pgTable("condition_settings", {
   id: text("id").primaryKey(),
   mode: conditionModeEnum("mode").notNull().default("default"),
   customThresholds: jsonb("custom_thresholds"),
   aiParameters: jsonb("ai_parameters"),
+  updatedBy: text("updated_by"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
 export const insertAccountConditionSchema = createInsertSchema(accountConditionsTable);
 export const insertConditionRuleSchema = createInsertSchema(conditionRulesTable);
 export const insertConditionSettingSchema = createInsertSchema(conditionSettingsTable);
