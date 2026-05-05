@@ -49,12 +49,10 @@ function checkEnv(): void {
   }
 
   lines.push(`╠${hr}╣`);
-  lines.push(pad("To fix, run ONE of these from the project root:"));
+  lines.push(pad("To fix:"));
   lines.push(pad(""));
-  lines.push(pad("  First time:     pnpm env:create"));
-  lines.push(pad("  Already set up: pnpm env:decrypt"));
-  lines.push(pad("  Add missing:    pnpm env:update"));
-  lines.push(pad("  View current:   pnpm env:show"));
+  lines.push(pad("  On Replit:  add secrets in the Secrets panel (padlock icon)"));
+  lines.push(pad("  Other envs: set values in your .env file at the project root"));
   lines.push(pad(""));
   lines.push(pad("  Then restart:   pnpm replit-start"));
   lines.push(`╚${hr}╝`);
@@ -68,7 +66,7 @@ function checkEnv(): void {
 
   if (!isProduction && missing.length > 0) {
     console.warn("[env:check] Development mode — continuing despite missing critical vars.");
-    console.warn("[env:check] Run `pnpm env:decrypt` or `pnpm env:create` to fix this.\n");
+    console.warn("[env:check] Add missing secrets in the Replit Secrets panel, then restart.\n");
   }
 }
 

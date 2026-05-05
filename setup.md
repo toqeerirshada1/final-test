@@ -43,7 +43,6 @@ AJKMart is a pnpm workspace monorepo containing 5 deployable apps and 10 shared 
 
 - **Node.js** 20+ and **pnpm** 9+
 - **PostgreSQL** connection string (`DATABASE_URL`)
-- Env password: `Khan@123.com` (change after first setup)
 
 ---
 
@@ -52,16 +51,13 @@ AJKMart is a pnpm workspace monorepo containing 5 deployable apps and 10 shared 
 **Zero-touch setup — 3 steps:**
 
 1. Import the repo from GitHub into any Replit account
-2. Add one Replit Secret: `ENV_PASSWORD = Khan@123.com`
+2. Add your secrets in the **Replit Secrets panel** (padlock icon): at minimum `DATABASE_URL` and the JWT/auth secrets
 3. Press **Run** — everything bootstraps automatically
 
 The bootstrap (`scripts/bootstrap.sh`) runs before each service on first boot and:
 - Installs dependencies (`pnpm install`) if missing or stale
-- Auto-decrypts `.env.enc` using `ENV_PASSWORD` (no interactive prompt)
 - Pushes the database schema (`pnpm db:push`) if `DATABASE_URL` is set
-- Skips all of the above instantly on subsequent starts (`.env` already present)
-
-> **Manual fallback:** If `ENV_PASSWORD` is not set, the bootstrap falls back to an interactive password prompt so it still works without the secret.
+- Skips all of the above instantly on subsequent starts
 
 **Service URLs in Replit preview pane:**
 
@@ -82,8 +78,8 @@ The bootstrap (`scripts/bootstrap.sh`) runs before each service on first boot an
 # 2. Install dependencies
 pnpm install
 
-# 3. Decrypt environment
-pnpm env:decrypt          # enter password: Khan@123.com
+# 3. Set environment variables (copy .env.example and fill in values)
+cp .env.example .env
 
 # 4. Start all services
 pnpm codespace-start
@@ -106,8 +102,8 @@ Port forwards are automatically detected by Codespaces.
 # 1. Install dependencies
 pnpm install
 
-# 2. Set up environment
-pnpm env:decrypt          # password: Khan@123.com
+# 2. Set up environment (copy template and fill in values)
+cp .env.example .env
 
 # 3. Push database schema
 pnpm db:push
@@ -128,8 +124,9 @@ node scripts/run-dev-all.mjs
 git clone <repo-url>
 pnpm install
 
-# 2. Decrypt environment
-pnpm env:decrypt
+# 2. Set up environment
+cp .env.example .env
+# Edit .env with your production values
 
 # 3. Build all apps
 node scripts/build-production.mjs
@@ -159,11 +156,10 @@ See [Section 7](#7-production-deployment-vps) for Caddy / Nginx config.
 | `ecosystem.config.cjs` | PM2 app config for VPS production start |
 | `flake.nix` / `replit.nix` | Nix environment for Replit |
 | `.env` | Active env vars — **gitignored**, never commit |
-| `.env.enc` | AES-256-GCM encrypted env — **safe to commit** |
 | `.env.example` | Non-sensitive template — safe to commit |
-| `.gitignore` | Ignores `.env`, backups; allows `.env.enc` |
+| `.gitignore` | Ignores `.env` and backup files |
 | `replit.md` | Agent memory / project documentation |
-| `test123.md` | Source reference for env-manager code — keep |
+| `test123.md` | Legacy reference document |
 | `setup.md` | This file — complete setup guide |
 
 ---
@@ -172,7 +168,7 @@ See [Section 7](#7-production-deployment-vps) for Caddy / Nginx config.
 
 | File | Purpose |
 |---|---|
-| `env-manager.mjs` | **Main env tool** — create/decrypt/update/show/verify/export/reset |
+| ~~`env-manager.mjs`~~ | Removed — use Replit Secrets or `.env` instead |
 | `launchers/start.mjs` | Multi-profile launcher (replit/codespace/vps/local) |
 | `launchers/replit.mjs` | Replit-specific service start |
 | `launchers/codespace.mjs` | Codespace-specific service start |
@@ -229,43 +225,11 @@ See [Section 7](#7-production-deployment-vps) for Caddy / Nginx config.
 
 ## 4. Environment System
 
-All secrets are stored in `.env.enc` (AES-256-GCM, scrypt key derivation).
+All secrets are managed via **Replit Secrets** on Replit, or a plain `.env` file on other platforms. There is no encrypted `.env.enc` system.
 
-### Quick Command Reference
+### On Replit
 
-| Command | What it does |
-|---|---|
-| `pnpm env:create` | First-time setup — set password, generate `.env.enc` |
-| `pnpm env:decrypt` | Unlock `.env.enc` → writes `.env` to disk |
-| `pnpm env:update` | Interactive menu: change any variable or password |
-| `pnpm env:show` | View all variables (secrets masked as `••••`) |
-| `pnpm env:verify` | Health-check report: READY / PLACEHOLDER / EMPTY status per var |
-| `pnpm env:export` | Write `.env.example` with secrets redacted — safe to commit |
-| `pnpm env:reset` | Delete `.env.enc` (backup created first), then recreate |
-| `pnpm env` | Alias for `env:decrypt` |
-
-### Command Aliases
-
-| Command | Also accepts |
-|---|---|
-| `env:decrypt` | `open`, `unlock` |
-| `env:update` | `edit`, `modify` |
-| `env:show` | `view`, `list` |
-| `env:verify` | `check`, `health`, `status` |
-| `env:export` | `example`, `template` |
-| `env:reset` | `delete`, `clean` |
-
-### `pnpm env:verify` — Status Legend
-
-| Icon | Meaning |
-|---|---|
-| ✅ | Real value set — ready to use |
-| 🟡 | Placeholder — has a value but needs a real one |
-| ⚠️ | Empty — using built-in default |
-| 🔧 | Can be auto-generated (run `env:update`) |
-| ❌ | Missing from `.env` entirely |
-
-### Variable Groups (47 total)
+Add secrets directly in the **Secrets panel** (padlock icon in the sidebar). Required secrets:
 
 | Group | Variables |
 |---|---|
@@ -284,24 +248,19 @@ All secrets are stored in `.env.enc` (AES-256-GCM, scrypt key derivation).
 | Runtime | `NODE_ENV`, `LOG_LEVEL` |
 | Expo / Vite | `EXPO_PUBLIC_DOMAIN`, `VITE_API_BASE_URL`, `VITE_API_PROXY_TARGET` |
 
-### Replacing Placeholder Values
+### On other platforms (local / Codespaces / VPS)
 
-When `pnpm env:verify` shows 🟡 PLACEHOLDER, run:
+Copy the template and fill in your values:
 
 ```bash
-pnpm env:update
-# → Choose option 2: Change specific variable
-# → Enter variable name (e.g. FIREBASE_PRIVATE_KEY)
-# → Paste the real value
+cp .env.example .env
+# Edit .env with your actual credentials
 ```
 
 ### Security Rules
 
 - `.env` is gitignored — never commit it
-- `.env.enc` is safe to commit (encrypted)
 - `.env.example` is safe to commit (secrets redacted)
-- Master password: **never commit** — share securely (WhatsApp / Signal)
-- Backups (`*.backup`) are auto-created before reset
 
 ---
 
@@ -313,7 +272,7 @@ pnpm env:update
 git clone <repo-url>
 cd ajkmart
 pnpm install
-pnpm env:decrypt          # password: Khan@123.com
+cp .env.example .env      # fill in your credentials
 pnpm db:push              # apply schema to database
 pnpm replit-start         # or codespace-start / local-start
 ```
@@ -331,8 +290,10 @@ pnpm dev:admin            # start only admin
 
 The `scripts/post-merge.sh` runs automatically and:
 1. Installs any new dependencies (`pnpm install`)
-2. Warns if `.env` is missing (run `pnpm env:decrypt`)
-3. Skips migrations gracefully if no `DATABASE_URL`
+2. Builds shared libraries (`@workspace/db`, `@workspace/phone-utils`)
+3. Runs any pending SQL migrations if `DATABASE_URL` is set
+
+> **Note:** `DATABASE_URL` must be present in your process environment (via Replit Secrets, `[userenv.shared]` in `.replit`, or exported in your shell session) for migrations to run. On Replit this is automatic; on other platforms run `export DATABASE_URL=<your-url>` before invoking post-merge manually.
 
 ### Database Commands
 
@@ -374,19 +335,6 @@ Inserts 20 sample products (groceries, food, household) for vendor `vendor_demo_
 | `pnpm dev:vendor` | 5174 | Vendor portal (Vite HMR) |
 | `pnpm dev:rider` | 5175 | Rider app (Vite HMR) |
 | `pnpm dev:customer` | 19006 | Customer Expo web |
-
-### Environment Scripts
-
-| Script | Description |
-|---|---|
-| `pnpm env` | Decrypt `.env.enc` → writes `.env` |
-| `pnpm env:create` | Create new encrypted environment |
-| `pnpm env:decrypt` | Same as `env` |
-| `pnpm env:update` | Interactive update menu |
-| `pnpm env:show` | Show all vars (masked) |
-| `pnpm env:verify` | Health check — ready/placeholder/empty report |
-| `pnpm env:export` | Generate `.env.example` (secrets redacted) |
-| `pnpm env:reset` | Delete with backup, recreate |
 
 ### Database Scripts
 
@@ -438,16 +386,10 @@ cd /srv/ajkmart
 pnpm install
 
 # 2. Set up environment
-pnpm env:decrypt
-# Enter your master password
+cp .env.example .env
+# Edit .env — set NODE_ENV=production, APP_BASE_URL, ALLOWED_ORIGINS, DATABASE_URL, etc.
 
-# 3. Update production vars
-pnpm env:update
-# Change: NODE_ENV=production
-# Change: APP_BASE_URL=https://yourdomain.com
-# Change: ALLOWED_ORIGINS=https://yourdomain.com
-
-# 4. Push database schema
+# 3. Push database schema
 pnpm db:push
 
 # 5. Build all apps
@@ -480,11 +422,7 @@ Routes:
 
 ### Environment Variables for Production
 
-Must update before deploying:
-
-```bash
-pnpm env:update     # change each one interactively
-```
+Edit `.env` (or set as system environment variables / server secrets) before deploying:
 
 | Variable | Production Value |
 |---|---|
@@ -501,31 +439,18 @@ pnpm env:update     # change each one interactively
 
 ## 8. Troubleshooting
 
-### `.env` not found on startup
-
-```bash
-pnpm env:decrypt          # enter password: Khan@123.com
-```
-
-The launcher auto-detects this and prompts for the password.
-
 ### `DATABASE_URL` not set / DB connection fails
 
+On Replit: add `DATABASE_URL` in the Secrets panel (padlock icon).
+On other platforms: set it in your `.env` file.
+
 ```bash
-pnpm env:show             # check current DATABASE_URL value
-pnpm env:update           # update it if wrong
-pnpm db:push              # re-push schema after fixing
+pnpm db:push              # re-push schema after fixing DATABASE_URL
 ```
 
 ### Port already in use
 
 The launcher has auto port-retry (up to 10 ports). Or set `PORT_FALLBACK_ENABLE=false` to get a clear error.
-
-### Wrong password for `.env.enc`
-
-You have 7 attempts. After 7 failures, the process exits. If you forget the password:
-1. Contact the team admin who has the master password
-2. Password hint: `Khan@123.com` format (change it after onboarding)
 
 ### TypeScript / Build errors
 
@@ -543,46 +468,38 @@ pnpm install --no-frozen-lockfile
 
 ### API returns 401 / JWT errors
 
-Check that these vars are set in `.env`:
-```bash
-pnpm env:verify            # look for 🟡 PLACEHOLDER or ❌ MISSING in JWT section
-pnpm env:update            # fix any placeholder values
-```
+Ensure all JWT secrets are set — `JWT_SECRET`, `ADMIN_JWT_SECRET`, `VENDOR_JWT_SECRET`, `RIDER_JWT_SECRET`, etc. On Replit, add them in the Secrets panel.
 
 ### Firebase / Push notifications not working
 
-The `FIREBASE_PRIVATE_KEY` in `.env.enc` is a **placeholder**. Replace with real key:
+`FIREBASE_PRIVATE_KEY` needs a real key from Firebase:
 1. Go to Firebase Console → Project Settings → Service Accounts
 2. Click "Generate new private key"
 3. Copy the `private_key` field from the downloaded JSON
-4. Run `pnpm env:update` and paste the real key for `FIREBASE_PRIVATE_KEY`
+4. Add it as `FIREBASE_PRIVATE_KEY` in Replit Secrets (or your `.env`)
 
 ### Gemini AI not responding
 
-`GEMINI_API_KEY` is currently set to `GOOGLE_API_KEY` (placeholder). Get a real key:
+Get a real API key and add it as `GEMINI_API_KEY`:
 1. Go to https://makersuite.google.com/app/apikey
 2. Create a new API key
-3. Run `pnpm env:update` → change `GEMINI_API_KEY`
+3. Add it in Replit Secrets (or your `.env` file)
 
 ---
 
-## Summary: Environment Status After Setup
+## Summary: Required Secrets
 
-Run `pnpm env:verify` to see current status. After initial setup:
+Add these in the Replit Secrets panel (or `.env` for other platforms):
 
-| Group | Status | Notes |
+| Group | Variables | Notes |
 |---|---|---|
-| JWT / Auth | ✅ READY | All secrets generated |
-| Admin Seed | ✅ READY | Default credentials set |
-| Ports & URLs | ✅ READY | Configured for local dev |
-| Push (VAPID) | ✅ READY | Keys generated |
-| Infrastructure | ✅ READY | Redis + Sentry using defaults |
-| Maps & OSRM | ✅ READY | OSRM using public server |
-| Firebase | 🟡 PLACEHOLDER | Replace with real Firebase key |
-| Gemini AI | 🟡 PLACEHOLDER | Replace with real Google API key |
-| Twilio / SMS | ✅ READY | Replace with real credentials for SMS |
-| Email | ✅ READY | Replace with real SendGrid key for email |
-| Database | ⚠️ DEFAULT | Set real `DATABASE_URL` for your PostgreSQL |
+| Database | `DATABASE_URL` | Required — app will not start without it |
+| JWT / Auth | `JWT_SECRET`, `ADMIN_JWT_SECRET`, `VENDOR_JWT_SECRET`, `RIDER_JWT_SECRET`, etc. | Required for auth to work |
+| Admin Seed | `ADMIN_SEED_USERNAME`, `ADMIN_SEED_PASSWORD`, `ADMIN_SEED_EMAIL` | Needed for first admin account |
+| Firebase | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Optional — push notifications |
+| Gemini AI | `GEMINI_API_KEY` | Optional — AI features |
+| Twilio / SMS | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | Optional — SMS OTP |
+| Email | `SENDGRID_API_KEY` | Optional — email delivery |
 
 ---
 

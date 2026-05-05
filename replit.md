@@ -78,58 +78,30 @@ The monorepo contains shared libraries under `lib/` that are consumed by the art
 - `@workspace/integrations` — shared integration helpers and adapters
 - `@workspace/integrations-gemini-ai` — Gemini AI integration utilities
 
-### Environment Variables (Replit Migration)
+### Environment Variables
 
-On Replit, environment variables are managed via Replit's Secrets panel and `[userenv]` in `.replit`. A `.env` file is generated at the project root with all required values — this replaces the encrypted `.env.enc` flow used in other environments.
+All credentials and secrets are managed via **Replit Secrets** (the padlock icon in the sidebar) and `[userenv.shared]` in `.replit`. There is no encrypted `.env.enc` file or `env-manager` — secrets flow directly from Replit's secrets store into the process environment.
 
-**To add optional API keys** (Firebase, Twilio, Gemini, etc.), use the Secrets panel in Replit. The keys the app looks for:
+**Required secrets — add these in the Replit Secrets panel:**
+- `DATABASE_URL` — PostgreSQL connection string (required)
+- `JWT_SECRET`, `ADMIN_JWT_SECRET`, `ADMIN_REFRESH_SECRET`, `ADMIN_SECRET` — JWT signing keys
+- `ADMIN_ACCESS_TOKEN_SECRET`, `ADMIN_REFRESH_TOKEN_SECRET`, `ADMIN_CSRF_SECRET` — Admin auth
+- `VENDOR_JWT_SECRET`, `RIDER_JWT_SECRET` — App-specific JWT keys
+- `ERROR_REPORT_HMAC_SECRET` — HMAC signing for error reports
+
+**Optional API keys — add in Replit Secrets when needed:**
 - `GEMINI_API_KEY` — Gemini AI features
 - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` — Push notifications
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` — SMS OTP
 - `SENDGRID_API_KEY` — Email delivery
 - `GOOGLE_MAPS_API_KEY` — Maps features
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACT_EMAIL` — Web push
-
-The `.env.enc` encrypted file system is still available for non-Replit environments:
-```bash
-pnpm env:create    # First-time setup — set master password, generate .env.enc
-pnpm env:decrypt   # Unlock .env.enc → writes .env + loads into process
-pnpm env:update    # Interactive menu: add missing vars / change var / change password
-pnpm env:show      # View all variables (secrets masked)
-pnpm env:verify    # Health-check report with score (% configured)
-pnpm env:export    # Generate .env.example with secrets redacted (safe to commit)
-pnpm env:reset     # Delete .env.enc with backup → then recreate
-pnpm env           # Alias for env:decrypt
-```
-
-**Command aliases:**
-| Command | Also works as |
-|---|---|
-| `env:decrypt` | `open`, `unlock` |
-| `env:update` | `edit`, `modify` |
-| `env:show` | `view`, `list` |
-| `env:verify` | `check`, `health`, `status` |
-| `env:export` | `example`, `template` |
-| `env:reset` | `delete`, `clean` |
-
-**Auto-decrypt on startup:** `scripts/launchers/start.mjs` calls `ensureEnv()` before launching services:
-1. `.env` exists → load it and continue
-2. `.env` missing, `.env.enc` exists → auto-prompts decrypt via env-manager
-3. Both missing → warns user to run `pnpm env:create`
-
-This means `pnpm replit-start` / `pnpm codespace-start` / `pnpm vps-start` / `pnpm local-start` all handle env automatically.
+- `REDIS_URL` — Redis for rate-limiting
+- `SENTRY_DSN` — Error tracking
 
 **API server first-run check:** `artifacts/api-server/src/index.ts` runs `checkEnv()` on boot — shows a banner with exact fix commands if `DATABASE_URL` or `JWT_SECRET` are missing. Fatal in production, warning in development.
 
 **Frontend dev warnings:** Admin, Vendor, and Rider apps log a `console.group` warning in dev mode if `VITE_API_PROXY_TARGET` is not set.
-
-**Security details:**
-- Encryption: AES-256-GCM with scrypt key derivation
-- Salt: fixed per-project (`AJKMart-Env-Salt-2024-v1`)
-- Max 7 password attempts before lockout
-- `.env` is gitignored; `.env.enc` is safe to commit (`!.env.enc` in `.gitignore`)
-- Secrets (JWT, tokens, keys) auto-generated if left empty on `env:create`
-- `env:export` redacts all secrets, keeping only non-sensitive values in `.env.example`
 
 **Required variables (50 total):**
 | Category | Variables |

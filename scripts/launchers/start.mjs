@@ -59,8 +59,6 @@ function loadEnvFile(envPath) {
 
 function ensureEnv() {
   const envPath = path.join(root, ".env");
-  const encPath = path.join(root, ".env.enc");
-  const managerPath = path.join(root, "scripts", "env-manager.mjs");
 
   if (fs.existsSync(envPath) && fs.statSync(envPath).size > 0) {
     loadEnvFile(envPath);
@@ -68,26 +66,12 @@ function ensureEnv() {
     return;
   }
 
-  if (fs.existsSync(encPath) && fs.statSync(encPath).size > 0) {
-    log(".env not found but .env.enc exists — launching env-manager to decrypt...");
-    if (!dryRun) {
-      const r = spawnSync("node", [managerPath, "decrypt"], { cwd: root, stdio: "inherit" });
-      if (r.status !== 0) {
-        err("env-manager decrypt failed or was cancelled. Services may not start correctly.");
-        warn("Run:  pnpm env:decrypt  to try again manually.");
-      } else {
-        loadEnvFile(envPath);
-        log(".env loaded after decrypt");
-      }
-    } else {
-      log("(dry-run) would run: node scripts/env-manager.mjs decrypt");
-    }
-    return;
+  // No .env file — rely on environment variables injected by Replit Secrets
+  // or the host environment. Log a notice so it's visible in the workflow console.
+  log("No .env file found — relying on Replit Secrets / host environment variables.");
+  if (!process.env.DATABASE_URL) {
+    warn("DATABASE_URL is not set. Add it in the Replit Secrets panel (padlock icon).");
   }
-
-  warn(".env and .env.enc both missing!");
-  warn("Run:  pnpm env:create  to set up encrypted environment.");
-  warn("Continuing without env — services requiring DB/secrets will fail.");
 }
 
 function detectEnv() {
