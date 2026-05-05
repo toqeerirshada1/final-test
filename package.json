@@ -39,6 +39,7 @@
     "env:decrypt": "node scripts/env-manager.mjs decrypt",
     "env:update": "node scripts/env-manager.mjs update",
     "env:show": "node scripts/env-manager.mjs show",
+    "env:verify": "node scripts/env-manager.mjs verify",
     "env:reset": "node scripts/env-manager.mjs reset"
   },
   "private": true,

@@ -734,6 +734,185 @@ const showCommand = async () => {
   printError('Max attempts exceeded!');
 };
 
+// ==================== VERIFY COMMAND ====================
+const verifyCommand = async () => {
+  printHeader();
+  console.log(`${colors.cyan}🔍 Environment Health Verification${colors.reset}\n`);
+
+  const envPath = path.join(ROOT, '.env');
+  let envContent = null;
+
+  // Try .env first (no password needed)
+  if (existsSync(envPath) && readFileSync(envPath, 'utf8').trim().length > 0) {
+    envContent = readFileSync(envPath, 'utf8');
+    console.log(`${colors.green}✅ Reading from .env (no password needed)${colors.reset}\n`);
+  } else if (existsSync(ENCRYPTED_FILE) && readFileSync(ENCRYPTED_FILE, 'utf8').trim().length > 0) {
+    console.log(`${colors.yellow}🔐 .env not found — will decrypt .env.enc${colors.reset}\n`);
+    const encryptedData = readFileSync(ENCRYPTED_FILE, 'utf8').trim();
+    for (let i = MAX_ATTEMPTS; i > 0; i--) {
+      const password = await askPassword(`${colors.bold}🔐 Enter password (${i} attempts): ${colors.reset}`);
+      try {
+        envContent = decrypt(encryptedData, password);
+        console.log(`\n${colors.green}✅ Decrypted successfully!${colors.reset}\n`);
+        break;
+      } catch (e) {
+        if (i > 1) printError(`Wrong password! ${i - 1} attempts remaining`);
+        else { printError('Max attempts exceeded!'); process.exit(1); }
+      }
+    }
+  } else {
+    printError('No .env or .env.enc found!');
+    console.log(`\n${colors.yellow}Run: ${colors.cyan}pnpm env:create${colors.reset}${colors.yellow} to set up environment.${colors.reset}\n`);
+    process.exit(1);
+  }
+
+  const currentVars = parseEnvContent(envContent);
+  const total = Object.keys(REQUIRED_VARIABLES).length;
+
+  // ── Categorize every required variable ──────────────────────────────────
+  const results = {
+    set:      [],  // has a real value
+    secret:   [],  // has value, but is a secret (masked)
+    default:  [],  // empty in .env but has a hardcoded default
+    autogen:  [],  // empty, no default, but can be auto-generated
+    empty:    [],  // key present, empty, no default, not auto-gen
+    missing:  [],  // key not in .env at all
+  };
+
+  const isSecretKey = (k) =>
+    k.includes('SECRET') || k.includes('JWT') || k.includes('TOKEN') ||
+    k.includes('HMAC')   || k.includes('KEY');
+
+  for (const [key, defaultValue] of Object.entries(REQUIRED_VARIABLES)) {
+    const inEnv   = key in currentVars;
+    const value   = currentVars[key] ?? '';
+    const hasVal  = value.trim().length > 0;
+    const hasDef  = defaultValue.trim().length > 0;
+    const canGen  = isSecretKey(key);
+
+    if (!inEnv) {
+      results.missing.push(key);
+    } else if (hasVal && canGen) {
+      results.secret.push({ key, value });
+    } else if (hasVal) {
+      results.set.push({ key, value });
+    } else if (!hasVal && hasDef) {
+      results.default.push({ key, defaultValue });
+    } else if (!hasVal && canGen) {
+      results.autogen.push(key);
+    } else {
+      results.empty.push(key);
+    }
+  }
+
+  // ── Health Score ──────────────────────────────────────────────────────────
+  const configured = results.set.length + results.secret.length + results.default.length;
+  const actionable = results.autogen.length; // fixable automatically
+  const broken     = results.missing.length + results.empty.length;
+  const score      = Math.round((configured / total) * 100);
+  const scoreWithAutogen = Math.round(((configured + actionable) / total) * 100);
+
+  const scoreColor =
+    score >= 90 ? colors.green :
+    score >= 70 ? colors.yellow :
+    colors.red;
+
+  console.log(`${colors.bold}📊 Health Score:${colors.reset}`);
+  console.log(`${'─'.repeat(60)}`);
+  console.log(`  Currently configured : ${scoreColor}${score}%${colors.reset}  (${configured}/${total} vars)`);
+  if (actionable > 0) {
+    console.log(`  After auto-generate  : ${colors.cyan}${scoreWithAutogen}%${colors.reset}  (${configured + actionable}/${total} vars)`);
+  }
+  console.log(`${'─'.repeat(60)}\n`);
+
+  // ── Domain Groups ─────────────────────────────────────────────────────────
+  const domainGroups = {
+    '🗄️  Database':        ['DATABASE_URL'],
+    '🔑 JWT & Auth':       ['JWT_SECRET','ADMIN_ACCESS_TOKEN_SECRET','ADMIN_REFRESH_TOKEN_SECRET','ADMIN_CSRF_SECRET','JWT_ISSUER'],
+    '👤 Admin Seed':       ['ADMIN_SEED_USERNAME','ADMIN_SEED_PASSWORD','ADMIN_SEED_EMAIL','ADMIN_SEED_NAME'],
+    '🔒 Security':         ['ERROR_REPORT_HMAC_SECRET','ALLOWED_ORIGINS','ADMIN_LEGACY_AUTH_DISABLED','ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN'],
+    '🌐 URLs & Ports':     ['PORT','PORT_FALLBACK_ENABLE','PORT_MAX_RETRIES','APP_BASE_URL','ADMIN_BASE_URL','FRONTEND_URL','CLIENT_URL'],
+    '📱 Firebase':         ['FIREBASE_PROJECT_ID','FIREBASE_CLIENT_EMAIL','FIREBASE_PRIVATE_KEY'],
+    '📞 Twilio / SMS':     ['TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_FROM_NUMBER'],
+    '📧 Email':            ['SENDGRID_API_KEY','SMTP_HOST'],
+    '🤖 AI':               ['GEMINI_API_KEY'],
+    '🗺️  Maps & OSRM':     ['GOOGLE_MAPS_API_KEY','OSRM_API_URL'],
+    '⚡ Infrastructure':   ['REDIS_URL','SENTRY_DSN'],
+    '🏗️  Runtime Flags':   ['NODE_ENV','LOG_LEVEL'],
+    '📲 Expo / Vite':      ['EXPO_PUBLIC_DOMAIN','VITE_API_BASE_URL','VITE_API_PROXY_TARGET'],
+  };
+
+  for (const [group, keys] of Object.entries(domainGroups)) {
+    const lines = [];
+    for (const key of keys) {
+      const inSet    = results.set.find(r => r.key === key);
+      const inSecret = results.secret.find(r => r.key === key);
+      if (inSecret) {
+        const masked = '••••••••' + inSecret.value.slice(-4);
+        lines.push(`  ${colors.green}✅ ${key.padEnd(38)}${colors.reset}${colors.gray}${masked}${colors.reset}`);
+      } else if (inSet) {
+        const display = inSet.value.length > 50 ? inSet.value.slice(0, 47) + '...' : inSet.value;
+        lines.push(`  ${colors.green}✅ ${key.padEnd(38)}${colors.reset}${colors.gray}${display}${colors.reset}`);
+      } else if (results.default.find(r => r.key === key)) {
+        const def = results.default.find(r => r.key === key);
+        lines.push(`  ${colors.yellow}⚠️  ${key.padEnd(37)}${colors.reset}${colors.dim}(empty — default: ${def.defaultValue})${colors.reset}`);
+      } else if (results.autogen.includes(key)) {
+        lines.push(`  ${colors.cyan}🔧 ${key.padEnd(38)}${colors.reset}${colors.dim}(empty — can auto-generate)${colors.reset}`);
+      } else if (results.empty.includes(key)) {
+        lines.push(`  ${colors.yellow}○  ${key.padEnd(38)}${colors.reset}${colors.yellow}(empty)${colors.reset}`);
+      } else if (results.missing.includes(key)) {
+        lines.push(`  ${colors.red}❌ ${key.padEnd(38)}${colors.reset}${colors.red}MISSING from .env${colors.reset}`);
+      }
+    }
+    if (lines.length > 0) {
+      console.log(`${colors.bold}${group}${colors.reset}`);
+      lines.forEach(l => console.log(l));
+      console.log('');
+    }
+  }
+
+  // ── Summary Table ─────────────────────────────────────────────────────────
+  console.log(`${'─'.repeat(60)}`);
+  console.log(`${colors.green}  ✅ Set & configured   ${colors.reset}: ${results.set.length + results.secret.length}`);
+  console.log(`${colors.yellow}  ⚠️  Has default value  ${colors.reset}: ${results.default.length}`);
+  console.log(`${colors.cyan}  🔧 Can auto-generate  ${colors.reset}: ${results.autogen.length}`);
+  console.log(`${colors.yellow}  ○  Empty (no default) ${colors.reset}: ${results.empty.length}`);
+  console.log(`${colors.red}  ❌ Missing entirely    ${colors.reset}: ${results.missing.length}`);
+  console.log(`${'─'.repeat(60)}`);
+  console.log(`  ${colors.bold}Total                  : ${total} variables${colors.reset}\n`);
+
+  // ── Action Hints ──────────────────────────────────────────────────────────
+  if (results.autogen.length > 0) {
+    console.log(`${colors.cyan}🔧 Auto-generatable secrets (run update → option 1):${colors.reset}`);
+    results.autogen.forEach(k => console.log(`   ${colors.dim}+ ${k}${colors.reset}`));
+    console.log(`\n  ${colors.cyan}→ pnpm env:update${colors.reset}  (choose option 1: Add missing variables)\n`);
+  }
+
+  if (results.missing.length > 0) {
+    console.log(`${colors.red}❌ Missing variables (must be added manually):${colors.reset}`);
+    results.missing.forEach(k => console.log(`   ${colors.red}- ${k}${colors.reset}`));
+    console.log(`\n  ${colors.cyan}→ pnpm env:update${colors.reset}  (choose option 2: Change specific variable)\n`);
+  }
+
+  if (results.empty.length > 0) {
+    console.log(`${colors.yellow}○ Empty variables (optional but recommended):${colors.reset}`);
+    results.empty.forEach(k => console.log(`   ${colors.yellow}- ${k}${colors.reset}`));
+    console.log('');
+  }
+
+  // ── Final verdict ─────────────────────────────────────────────────────────
+  if (score === 100) {
+    console.log(`${colors.green}🎉 PERFECT — all ${total} variables configured!${colors.reset}\n`);
+  } else if (scoreWithAutogen >= 90) {
+    console.log(`${colors.green}✅ GOOD — run ${colors.cyan}pnpm env:update${colors.green} to fill auto-generatable secrets.${colors.reset}\n`);
+  } else if (score >= 70) {
+    console.log(`${colors.yellow}⚠️  PARTIAL — some important variables are missing.${colors.reset}\n`);
+  } else {
+    console.log(`${colors.red}🚨 CRITICAL — environment is not ready. Run ${colors.cyan}pnpm env:create${colors.red}.${colors.reset}\n`);
+    process.exit(1);
+  }
+};
+
 // ==================== HELP ====================
 const printHelp = () => {
   console.log(`
@@ -745,6 +924,7 @@ ${colors.green}Commands:${colors.reset}
   ${colors.cyan}decrypt${colors.reset}    Decrypt & load existing environment
   ${colors.cyan}update${colors.reset}     Update variables or password
   ${colors.cyan}show${colors.reset}       View all variables (secrets masked)
+  ${colors.cyan}verify${colors.reset}     Health-check report with score
   ${colors.cyan}reset${colors.reset}      Delete & start fresh (with backup)
   ${colors.cyan}help${colors.reset}       Show this help
 
@@ -753,6 +933,7 @@ ${colors.green}Usage via pnpm:${colors.reset}
   ${colors.yellow}pnpm env:decrypt${colors.reset}
   ${colors.yellow}pnpm env:update${colors.reset}
   ${colors.yellow}pnpm env:show${colors.reset}
+  ${colors.yellow}pnpm env:verify${colors.reset}
   ${colors.yellow}pnpm env:reset${colors.reset}
 
 ${colors.green}Direct usage:${colors.reset}
@@ -805,6 +986,13 @@ const main = async () => {
     case 'view':
     case 'list':
       await showCommand();
+      break;
+
+    case 'verify':
+    case 'check':
+    case 'health':
+    case 'status':
+      await verifyCommand();
       break;
 
     case 'help':
