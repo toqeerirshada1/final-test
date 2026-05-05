@@ -44,6 +44,8 @@ PostgreSQL is the chosen database, with schema managed by Drizzle ORM. Drizzle K
 
 ## Development Setup
 
+> Full setup guide: see `setup.md` in the project root.
+
 ### Prerequisites
 This is a pnpm workspace monorepo. All dependencies must be installed from the workspace root before starting any artifact.
 

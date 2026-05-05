@@ -802,7 +802,7 @@ const exportCommand = async () => {
     },
     {
       header: '# ─── JWT & Auth Secrets ──────────────────────────────',
-      keys: ['JWT_SECRET','ADMIN_ACCESS_TOKEN_SECRET','ADMIN_REFRESH_TOKEN_SECRET','ADMIN_CSRF_SECRET','JWT_ISSUER'],
+      keys: ['JWT_SECRET','ADMIN_JWT_SECRET','ADMIN_REFRESH_SECRET','ADMIN_SECRET','ADMIN_ACCESS_TOKEN_SECRET','ADMIN_REFRESH_TOKEN_SECRET','ADMIN_CSRF_SECRET','VENDOR_JWT_SECRET','RIDER_JWT_SECRET','JWT_ISSUER'],
     },
     {
       header: '# ─── Admin Seed ──────────────────────────────────────',
@@ -835,6 +835,10 @@ const exportCommand = async () => {
     {
       header: '# ─── Maps & Routing ─────────────────────────────────',
       keys: ['GOOGLE_MAPS_API_KEY','OSRM_API_URL'],
+    },
+    {
+      header: '# ─── Push Notifications (VAPID) ─────────────────────',
+      keys: ['VAPID_PRIVATE_KEY','VAPID_PUBLIC_KEY','VAPID_CONTACT_EMAIL'],
     },
     {
       header: '# ─── Infrastructure ─────────────────────────────────',
@@ -949,17 +953,27 @@ const verifyCommand = async () => {
 
   // ── Categorize every required variable ──────────────────────────────────
   const results = {
-    set:      [],  // has a real value
-    secret:   [],  // has value, but is a secret (masked)
-    default:  [],  // empty in .env but has a hardcoded default
-    autogen:  [],  // empty, no default, but can be auto-generated
-    empty:    [],  // key present, empty, no default, not auto-gen
-    missing:  [],  // key not in .env at all
+    ready:       [],  // real value, not a secret
+    secret:      [],  // real secret value (masked on display)
+    placeholder: [],  // has a value but it is a template / needs replacing
+    default:     [],  // empty in .env but has a hardcoded default
+    autogen:     [],  // empty, no default, but can be auto-generated
+    empty:       [],  // key present, empty, no default, not auto-gen
+    missing:     [],  // key not in .env at all
   };
 
   const isSecretKey = (k) =>
     k.includes('SECRET') || k.includes('JWT') || k.includes('TOKEN') ||
     k.includes('HMAC')   || k.includes('KEY');
+
+  const isPlaceholder = (key, value) => {
+    if (!value) return false;
+    const vu = value.toUpperCase();
+    if (vu.includes('PLACEHOLDER') || vu.includes('REPLACE_WITH') || vu.includes('YOUR_')) return true;
+    // Value that looks like an env var name (all-caps + underscores, no special chars)
+    if (/^[A-Z][A-Z_0-9]{4,}$/.test(value)) return true;
+    return false;
+  };
 
   for (const [key, defaultValue] of Object.entries(REQUIRED_VARIABLES)) {
     const inEnv   = key in currentVars;
@@ -970,10 +984,12 @@ const verifyCommand = async () => {
 
     if (!inEnv) {
       results.missing.push(key);
+    } else if (hasVal && isPlaceholder(key, value)) {
+      results.placeholder.push({ key, value });
     } else if (hasVal && canGen) {
       results.secret.push({ key, value });
     } else if (hasVal) {
-      results.set.push({ key, value });
+      results.ready.push({ key, value });
     } else if (!hasVal && hasDef) {
       results.default.push({ key, defaultValue });
     } else if (!hasVal && canGen) {
@@ -984,29 +1000,33 @@ const verifyCommand = async () => {
   }
 
   // ── Health Score ──────────────────────────────────────────────────────────
-  const configured = results.set.length + results.secret.length + results.default.length;
-  const actionable = results.autogen.length; // fixable automatically
-  const broken     = results.missing.length + results.empty.length;
-  const score      = Math.round((configured / total) * 100);
-  const scoreWithAutogen = Math.round(((configured + actionable) / total) * 100);
+  const configured      = results.ready.length + results.secret.length + results.default.length;
+  const partial         = results.placeholder.length;
+  const actionable      = results.autogen.length;
+  const scoreReal       = Math.round((configured / total) * 100);
+  const score           = Math.round(((configured + partial * 0.5) / total) * 100);
+  const scoreWithAutogen = Math.round(((configured + partial * 0.5 + actionable) / total) * 100);
 
   const scoreColor =
-    score >= 90 ? colors.green :
-    score >= 70 ? colors.yellow :
+    scoreReal >= 90 ? colors.green :
+    scoreReal >= 70 ? colors.yellow :
     colors.red;
 
   console.log(`${colors.bold}📊 Health Score:${colors.reset}`);
   console.log(`${'─'.repeat(60)}`);
-  console.log(`  Currently configured : ${scoreColor}${score}%${colors.reset}  (${configured}/${total} vars)`);
+  console.log(`  Real values set      : ${scoreColor}${scoreReal}%${colors.reset}  (${configured}/${total} vars)`);
+  if (partial > 0) {
+    console.log(`  Including placeholders: ${colors.yellow}${score}%${colors.reset}  (${partial} vars need real values)`);
+  }
   if (actionable > 0) {
-    console.log(`  After auto-generate  : ${colors.cyan}${scoreWithAutogen}%${colors.reset}  (${configured + actionable}/${total} vars)`);
+    console.log(`  After auto-generate  : ${colors.cyan}${scoreWithAutogen}%${colors.reset}  (run pnpm env:update)`);
   }
   console.log(`${'─'.repeat(60)}\n`);
 
   // ── Domain Groups ─────────────────────────────────────────────────────────
   const domainGroups = {
     '🗄️  Database':        ['DATABASE_URL'],
-    '🔑 JWT & Auth':       ['JWT_SECRET','ADMIN_ACCESS_TOKEN_SECRET','ADMIN_REFRESH_TOKEN_SECRET','ADMIN_CSRF_SECRET','JWT_ISSUER'],
+    '🔑 JWT & Auth':       ['JWT_SECRET','ADMIN_JWT_SECRET','ADMIN_REFRESH_SECRET','ADMIN_SECRET','ADMIN_ACCESS_TOKEN_SECRET','ADMIN_REFRESH_TOKEN_SECRET','ADMIN_CSRF_SECRET','VENDOR_JWT_SECRET','RIDER_JWT_SECRET','JWT_ISSUER'],
     '👤 Admin Seed':       ['ADMIN_SEED_USERNAME','ADMIN_SEED_PASSWORD','ADMIN_SEED_EMAIL','ADMIN_SEED_NAME'],
     '🔒 Security':         ['ERROR_REPORT_HMAC_SECRET','ALLOWED_ORIGINS','ADMIN_LEGACY_AUTH_DISABLED','ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN'],
     '🌐 URLs & Ports':     ['PORT','PORT_FALLBACK_ENABLE','PORT_MAX_RETRIES','APP_BASE_URL','ADMIN_BASE_URL','FRONTEND_URL','CLIENT_URL'],
@@ -1015,6 +1035,7 @@ const verifyCommand = async () => {
     '📧 Email':            ['SENDGRID_API_KEY','SMTP_HOST'],
     '🤖 AI':               ['GEMINI_API_KEY'],
     '🗺️  Maps & OSRM':     ['GOOGLE_MAPS_API_KEY','OSRM_API_URL'],
+    '🔔 Push (VAPID)':     ['VAPID_PRIVATE_KEY','VAPID_PUBLIC_KEY','VAPID_CONTACT_EMAIL'],
     '⚡ Infrastructure':   ['REDIS_URL','SENTRY_DSN'],
     '🏗️  Runtime Flags':   ['NODE_ENV','LOG_LEVEL'],
     '📲 Expo / Vite':      ['EXPO_PUBLIC_DOMAIN','VITE_API_BASE_URL','VITE_API_PROXY_TARGET'],
@@ -1023,14 +1044,18 @@ const verifyCommand = async () => {
   for (const [group, keys] of Object.entries(domainGroups)) {
     const lines = [];
     for (const key of keys) {
-      const inSet    = results.set.find(r => r.key === key);
-      const inSecret = results.secret.find(r => r.key === key);
+      const inReady       = results.ready.find(r => r.key === key);
+      const inSecret      = results.secret.find(r => r.key === key);
+      const inPlaceholder = results.placeholder.find(r => r.key === key);
       if (inSecret) {
         const masked = '••••••••' + inSecret.value.slice(-4);
         lines.push(`  ${colors.green}✅ ${key.padEnd(38)}${colors.reset}${colors.gray}${masked}${colors.reset}`);
-      } else if (inSet) {
-        const display = inSet.value.length > 50 ? inSet.value.slice(0, 47) + '...' : inSet.value;
+      } else if (inReady) {
+        const display = inReady.value.length > 50 ? inReady.value.slice(0, 47) + '...' : inReady.value;
         lines.push(`  ${colors.green}✅ ${key.padEnd(38)}${colors.reset}${colors.gray}${display}${colors.reset}`);
+      } else if (inPlaceholder) {
+        const display = inPlaceholder.value.length > 42 ? inPlaceholder.value.slice(0, 39) + '...' : inPlaceholder.value;
+        lines.push(`  ${colors.yellow}🟡 ${key.padEnd(38)}${colors.reset}${colors.dim}PLACEHOLDER: ${display}${colors.reset}`);
       } else if (results.default.find(r => r.key === key)) {
         const def = results.default.find(r => r.key === key);
         lines.push(`  ${colors.yellow}⚠️  ${key.padEnd(37)}${colors.reset}${colors.dim}(empty — default: ${def.defaultValue})${colors.reset}`);
@@ -1051,13 +1076,14 @@ const verifyCommand = async () => {
 
   // ── Summary Table ─────────────────────────────────────────────────────────
   console.log(`${'─'.repeat(60)}`);
-  console.log(`${colors.green}  ✅ Set & configured   ${colors.reset}: ${results.set.length + results.secret.length}`);
-  console.log(`${colors.yellow}  ⚠️  Has default value  ${colors.reset}: ${results.default.length}`);
-  console.log(`${colors.cyan}  🔧 Can auto-generate  ${colors.reset}: ${results.autogen.length}`);
-  console.log(`${colors.yellow}  ○  Empty (no default) ${colors.reset}: ${results.empty.length}`);
-  console.log(`${colors.red}  ❌ Missing entirely    ${colors.reset}: ${results.missing.length}`);
+  console.log(`${colors.green}  ✅ Ready (real value)      ${colors.reset}: ${results.ready.length + results.secret.length}`);
+  console.log(`${colors.yellow}  🟡 Placeholder (needs real)${colors.reset}: ${results.placeholder.length}`);
+  console.log(`${colors.yellow}  ⚠️  Has default value       ${colors.reset}: ${results.default.length}`);
+  console.log(`${colors.cyan}  🔧 Can auto-generate       ${colors.reset}: ${results.autogen.length}`);
+  console.log(`${colors.yellow}  ○  Empty (no default)      ${colors.reset}: ${results.empty.length}`);
+  console.log(`${colors.red}  ❌ Missing entirely         ${colors.reset}: ${results.missing.length}`);
   console.log(`${'─'.repeat(60)}`);
-  console.log(`  ${colors.bold}Total                  : ${total} variables${colors.reset}\n`);
+  console.log(`  ${colors.bold}Total                       : ${total} variables${colors.reset}\n`);
 
   // ── Action Hints ──────────────────────────────────────────────────────────
   if (results.autogen.length > 0) {
@@ -1079,11 +1105,20 @@ const verifyCommand = async () => {
   }
 
   // ── Final verdict ─────────────────────────────────────────────────────────
-  if (score === 100) {
-    console.log(`${colors.green}🎉 PERFECT — all ${total} variables configured!${colors.reset}\n`);
+  const placeholderList = results.placeholder.map(r => r.key);
+  if (placeholderList.length > 0) {
+    console.log(`${colors.yellow}🟡 Vars that need real values (run pnpm env:update → option 2):${colors.reset}`);
+    placeholderList.forEach(k => console.log(`   ${colors.yellow}→ ${k}${colors.reset}`));
+    console.log('');
+  }
+
+  if (scoreReal === 100 && partial === 0) {
+    console.log(`${colors.green}🎉 PERFECT — all ${total} variables have real values!${colors.reset}\n`);
+  } else if (scoreReal >= 85 && partial > 0) {
+    console.log(`${colors.yellow}🟡 ALMOST — ${partial} placeholder(s) need real values. Run ${colors.cyan}pnpm env:update${colors.yellow}.${colors.reset}\n`);
   } else if (scoreWithAutogen >= 90) {
-    console.log(`${colors.green}✅ GOOD — run ${colors.cyan}pnpm env:update${colors.green} to fill auto-generatable secrets.${colors.reset}\n`);
-  } else if (score >= 70) {
+    console.log(`${colors.green}✅ GOOD — run ${colors.cyan}pnpm env:update${colors.green} to complete setup.${colors.reset}\n`);
+  } else if (scoreReal >= 70) {
     console.log(`${colors.yellow}⚠️  PARTIAL — some important variables are missing.${colors.reset}\n`);
   } else {
     console.log(`${colors.red}🚨 CRITICAL — environment is not ready. Run ${colors.cyan}pnpm env:create${colors.red}.${colors.reset}\n`);
