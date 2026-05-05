@@ -15,31 +15,24 @@
 import Redis from "ioredis";
 
 function sanitizeRedisUrl(raw: string): string | null {
-  const candidates = [raw, (() => {
+  const value = raw.trim().replace(/^["']|["']$/g, "").trim();
+  const decoded = (() => {
     try {
-      return decodeURIComponent(raw);
+      return decodeURIComponent(value).trim();
     } catch {
-      return raw;
+      return value;
     }
-  })()].map(v => v.trim().replace(/^["']|["']$/g, "").trim());
-
-  for (const candidate of candidates) {
-    const fixed = candidate
-      .replace(/^redis-cli\s+/i, "")
-      .replace(/^(?:--tls\s+-u\s+|--tls\s+|-u\s+)/i, "")
-      .trim();
-
-    const normalized = fixed.startsWith("redis://")
-      ? `rediss://${fixed.slice("redis://".length)}`
-      : fixed;
-
-    try {
-      const parsed = new URL(normalized);
-      if (parsed.hostname) return normalized;
-    } catch {}
+  })();
+  const normalized = decoded.startsWith("redis://")
+    ? `rediss://${decoded.slice("redis://".length)}`
+    : decoded;
+  try {
+    const parsed = new URL(normalized);
+    if (!parsed.hostname) return null;
+    return normalized;
+  } catch {
+    return null;
   }
-
-  return null;
 }
 
 let redisClient: Redis | null = null;
@@ -71,11 +64,7 @@ if (rawUrl) {
       console.error("[redis] Failed to initialise client:", (err as Error).message);
       redisClient = null;
     }
-  } else {
-    console.warn("[redis] REDIS_URL is invalid — rate-limit counters will use in-memory store");
   }
-} else {
-  console.warn("[redis] REDIS_URL not set — rate-limit counters will use in-memory store");
 }
 
 export { redisClient };
