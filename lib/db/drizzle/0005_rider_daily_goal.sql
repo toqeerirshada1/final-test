@@ -1,1 +1,0 @@
-ALTER TABLE "rider_profiles" ADD COLUMN "daily_goal" numeric(10, 2);
