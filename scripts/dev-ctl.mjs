@@ -17,19 +17,19 @@ const services = {
   admin: {
     filter: "@workspace/admin",
     script: "dev",
-    env: { PORT: "5173", HOST: "0.0.0.0", BASE_PATH: "/admin/", VITE_API_PROXY_TARGET: "http://127.0.0.1:8080" },
+    env: { PORT: "5173", HOST: "0.0.0.0", BASE_PATH: "/admin/", VITE_API_PROXY_TARGET: "http://127.0.0.1:5000" },
     label: "Admin web",
   },
   vendor: {
     filter: "@workspace/vendor-app",
     script: "dev",
-    env: { PORT: "5174", HOST: "0.0.0.0", BASE_PATH: "/vendor/", VITE_API_PROXY_TARGET: "http://127.0.0.1:8080" },
+    env: { PORT: "5174", HOST: "0.0.0.0", BASE_PATH: "/vendor/", VITE_API_PROXY_TARGET: "http://127.0.0.1:5000" },
     label: "Vendor web",
   },
   rider: {
     filter: "@workspace/rider-app",
     script: "dev",
-    env: { PORT: "5175", HOST: "0.0.0.0", BASE_PATH: "/rider/", VITE_API_PROXY_TARGET: "http://127.0.0.1:8080" },
+    env: { PORT: "5175", HOST: "0.0.0.0", BASE_PATH: "/rider/", VITE_API_PROXY_TARGET: "http://127.0.0.1:5000" },
     label: "Rider web",
   },
   ajkmart: {
