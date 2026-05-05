@@ -80,37 +80,64 @@ The monorepo contains shared libraries under `lib/` that are consumed by the art
 
 Environment variables are managed via an AES-256-GCM encrypted file (`.env.enc`). The system uses `scripts/env-manager.mjs` — a full interactive encrypted env management tool with 7-attempt lockout, hidden password input (Tab to toggle visibility), auto-generated secrets, and auto-backup on reset.
 
-**First-time setup:**
+**Commands:**
 ```bash
-pnpm env:create    # Set master password, generate .env.enc
-```
-
-**Every session (or automatic on start):**
-```bash
-pnpm env:decrypt   # Decrypt .env.enc → writes .env + loads into process
-```
-
-**Other commands:**
-```bash
+pnpm env:create    # First-time setup — set master password, generate .env.enc
+pnpm env:decrypt   # Unlock .env.enc → writes .env + loads into process
 pnpm env:update    # Interactive menu: add missing vars / change var / change password
 pnpm env:show      # View all variables (secrets masked)
-pnpm env:reset     # Delete .env.enc (creates backup first) → then recreate
+pnpm env:verify    # Health-check report with score (% configured)
+pnpm env:export    # Generate .env.example with secrets redacted (safe to commit)
+pnpm env:reset     # Delete .env.enc with backup → then recreate
 pnpm env           # Alias for env:decrypt
 ```
 
-**Auto-decrypt on startup:** `scripts/launchers/start.mjs` calls `ensureEnv()` before launching services. It checks:
+**Command aliases:**
+| Command | Also works as |
+|---|---|
+| `env:decrypt` | `open`, `unlock` |
+| `env:update` | `edit`, `modify` |
+| `env:show` | `view`, `list` |
+| `env:verify` | `check`, `health`, `status` |
+| `env:export` | `example`, `template` |
+| `env:reset` | `delete`, `clean` |
+
+**Auto-decrypt on startup:** `scripts/launchers/start.mjs` calls `ensureEnv()` before launching services:
 1. `.env` exists → load it and continue
 2. `.env` missing, `.env.enc` exists → auto-prompts decrypt via env-manager
 3. Both missing → warns user to run `pnpm env:create`
 
 This means `pnpm replit-start` / `pnpm codespace-start` / `pnpm vps-start` / `pnpm local-start` all handle env automatically.
 
+**API server first-run check:** `artifacts/api-server/src/index.ts` runs `checkEnv()` on boot — shows a banner with exact fix commands if `DATABASE_URL` or `JWT_SECRET` are missing. Fatal in production, warning in development.
+
+**Frontend dev warnings:** Admin, Vendor, and Rider apps log a `console.group` warning in dev mode if `VITE_API_PROXY_TARGET` is not set.
+
 **Security details:**
 - Encryption: AES-256-GCM with scrypt key derivation
 - Salt: fixed per-project (`AJKMart-Env-Salt-2024-v1`)
 - Max 7 password attempts before lockout
-- `.env` is gitignored; `.env.enc` is safe to commit
-- Secrets (JWT, tokens, keys) are auto-generated if left empty on create
+- `.env` is gitignored; `.env.enc` is safe to commit (`!.env.enc` in `.gitignore`)
+- Secrets (JWT, tokens, keys) auto-generated if left empty on `env:create`
+- `env:export` redacts all secrets, keeping only non-sensitive values in `.env.example`
+
+**Required variables (50 total):**
+| Category | Variables |
+|---|---|
+| Database | `DATABASE_URL` |
+| JWT / Auth | `JWT_SECRET`, `ADMIN_JWT_SECRET`, `ADMIN_REFRESH_SECRET`, `ADMIN_SECRET`, `ADMIN_ACCESS_TOKEN_SECRET`, `ADMIN_REFRESH_TOKEN_SECRET`, `ADMIN_CSRF_SECRET`, `VENDOR_JWT_SECRET`, `RIDER_JWT_SECRET`, `JWT_ISSUER` |
+| Admin Seed | `ADMIN_SEED_USERNAME`, `ADMIN_SEED_PASSWORD`, `ADMIN_SEED_EMAIL`, `ADMIN_SEED_NAME` |
+| Security | `ERROR_REPORT_HMAC_SECRET`, `ALLOWED_ORIGINS`, `ADMIN_LEGACY_AUTH_DISABLED`, `ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN` |
+| Ports & URLs | `PORT` (5000), `APP_BASE_URL`, `ADMIN_BASE_URL`, `FRONTEND_URL`, `CLIENT_URL`, `PORT_FALLBACK_ENABLE`, `PORT_MAX_RETRIES` |
+| Firebase | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` |
+| Twilio / SMS | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` |
+| Email | `SENDGRID_API_KEY`, `SMTP_HOST` |
+| AI | `GEMINI_API_KEY` |
+| Maps | `GOOGLE_MAPS_API_KEY`, `OSRM_API_URL` |
+| Push (VAPID) | `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_CONTACT_EMAIL` |
+| Infrastructure | `REDIS_URL`, `SENTRY_DSN` |
+| Runtime | `NODE_ENV`, `LOG_LEVEL` |
+| Expo / Vite | `EXPO_PUBLIC_DOMAIN`, `VITE_API_BASE_URL`, `VITE_API_PROXY_TARGET` |
 
 ### Validation and Support Scripts
 The API server includes a `check-permissions` validation script used by the Replit workflow, and the monorepo includes launcher scripts for Replit, Codespaces, VPS, and local development.

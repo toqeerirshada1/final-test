@@ -24,6 +24,11 @@ const REQUIRED_VARIABLES = {
   ADMIN_ACCESS_TOKEN_SECRET: '',
   ADMIN_REFRESH_TOKEN_SECRET: '',
   ADMIN_CSRF_SECRET: '',
+  ADMIN_JWT_SECRET: '',
+  ADMIN_REFRESH_SECRET: '',
+  ADMIN_SECRET: '',
+  VENDOR_JWT_SECRET: '',
+  RIDER_JWT_SECRET: '',
 
   // Admin Seed
   ADMIN_SEED_USERNAME: 'superadmin',
@@ -32,12 +37,12 @@ const REQUIRED_VARIABLES = {
   ADMIN_SEED_NAME: 'Super Admin',
 
   // Port Configuration
-  PORT: '8080',
+  PORT: '5000',
   PORT_FALLBACK_ENABLE: 'true',
   PORT_MAX_RETRIES: '10',
 
   // URLs
-  APP_BASE_URL: 'http://localhost:8080',
+  APP_BASE_URL: 'http://localhost:5000',
   ADMIN_BASE_URL: 'http://localhost:5173',
   FRONTEND_URL: 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:19006',
   CLIENT_URL: 'http://localhost:5173',
@@ -57,6 +62,11 @@ const REQUIRED_VARIABLES = {
   REDIS_URL: '',
   SENTRY_DSN: '',
 
+  // Push Notifications (VAPID)
+  VAPID_PRIVATE_KEY: '',
+  VAPID_PUBLIC_KEY: '',
+  VAPID_CONTACT_EMAIL: '',
+
   // Feature Flags
   ADMIN_LEGACY_AUTH_DISABLED: '0',
   LOG_LEVEL: 'debug',
@@ -71,9 +81,9 @@ const REQUIRED_VARIABLES = {
   ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN: '15',
 
   // Expo/Vite Config
-  EXPO_PUBLIC_DOMAIN: 'http://localhost:8080',
-  VITE_API_BASE_URL: 'http://localhost:8080',
-  VITE_API_PROXY_TARGET: 'http://localhost:8080',
+  EXPO_PUBLIC_DOMAIN: 'http://localhost:5000',
+  VITE_API_BASE_URL: 'http://localhost:5000',
+  VITE_API_PROXY_TARGET: 'http://localhost:5000',
 };
 
 // ==================== COLORS ====================
