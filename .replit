@@ -207,11 +207,21 @@ ALLOWED_ORIGINS = ""
 VENDOR_DEV_PORT = "3002"
 RIDER_DEV_PORT = "3001"
 DATABASE_URL = "postgresql://neondb_owner:npg_8CZnNQxSivM4@ep-withered-pond-aod3mqmg-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+ADMIN_SEED_EMAIL = "admin@ajkmart.com"
+APP_BASE_URL = "http://localhost:5000"
+ADMIN_BASE_URL = "http://localhost:3000"
+FRONTEND_URL = "http://localhost:3000,http://localhost:3001,http://localhost:3002"
+CLIENT_URL = "http://localhost:3000"
+EXPO_PUBLIC_DOMAIN = "localhost:5000"
+VITE_API_BASE_URL = "http://localhost:5000"
+ADMIN_LEGACY_AUTH_DISABLED = "0"
+ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN = "15"
+ADMIN_DEV_PORT = "3000"
 
 [userenv.production]
 
 [userenv.development]
-VITE_API_PROXY_TARGET = "http://127.0.0.1:8080"
+VITE_API_PROXY_TARGET = "http://127.0.0.1:5000"
 
 [rules]
 
@@ -228,10 +238,6 @@ localPort = 3000
 [[ports]]
 localPort = 3002
 externalPort = 3002
-
-[[ports]]
-localPort = 5000
-externalPort = 80
 
 [[ports]]
 localPort = 21463
