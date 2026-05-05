@@ -28,10 +28,25 @@ else
   fi
 fi
 
-# Load .env into this shell if present
-set -a
-[ -f .env ] && [ -s .env ] && source .env
-set +a
+# Load .env into this shell if present (safe parser — handles special chars in values)
+if [ -f .env ] && [ -s .env ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    # Skip blank lines and comments
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    # Only process lines that look like KEY=VALUE
+    if [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      val="${BASH_REMATCH[2]}"
+      # Strip surrounding quotes if present
+      val="${val%\"}"
+      val="${val#\"}"
+      val="${val%\'}"
+      val="${val#\'}"
+      export "$key=$val"
+    fi
+  done < .env
+fi
 
 # ─── INSTALL ──────────────────────────────────────────────────────────────────
 INSTALL_MARKER="node_modules/.post-merge-install-marker"
