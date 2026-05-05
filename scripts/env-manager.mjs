@@ -305,6 +305,8 @@ const printPasswordHint = () => {
 
 // ==================== DECRYPT COMMAND ====================
 const decryptCommand = async () => {
+  const nonInteractive = process.argv.includes('--non-interactive');
+
   printHeader();
 
   if (!existsSync(ENCRYPTED_FILE)) {
@@ -316,60 +318,86 @@ const decryptCommand = async () => {
     process.exit(1);
   }
 
-  printPasswordHint();
-
   const encryptedData = readFileSync(ENCRYPTED_FILE, 'utf8').trim();
 
-  let attemptsLeft = MAX_ATTEMPTS;
   let decrypted = null;
 
-  while (attemptsLeft > 0) {
-    const remainingMsg = attemptsLeft < MAX_ATTEMPTS
-      ? `${colors.red}(${attemptsLeft} attempts remaining)${colors.reset} `
-      : '';
-
-    const password = await askPassword(
-      `${remainingMsg}${colors.bold}🔐 Enter decryption password: ${colors.reset}`
-    );
-
-    if (!password || password.length < 4) {
-      console.log(`${colors.yellow}⚠️  Password too short (min 4 chars)${colors.reset}\n`);
-      continue;
-    }
-
+  // Non-interactive fast path: use ENV_PASSWORD if set (e.g. Replit Secret)
+  const envPassword = process.env.ENV_PASSWORD;
+  if (envPassword) {
+    console.log(`${colors.cyan}🔑 Using ENV_PASSWORD secret for non-interactive decryption...${colors.reset}\n`);
     try {
-      decrypted = decrypt(encryptedData, password);
-      console.log(`\n${colors.green}✅ Password correct! Decrypting environment...${colors.reset}\n`);
-      break;
-    } catch (error) {
-      attemptsLeft--;
-
-      if (attemptsLeft > 0) {
-        console.log(`${colors.red}❌ Wrong password! ${attemptsLeft} attempts remaining${colors.reset}\n`);
-
-        if (attemptsLeft <= 4) {
-          console.log(`${colors.gray}💡 Hint: Check if CAPS LOCK is on${colors.reset}`);
-          console.log(`${colors.gray}💡 Hint: Try your most commonly used passwords${colors.reset}\n`);
-        }
+      decrypted = decrypt(encryptedData, envPassword);
+      console.log(`${colors.green}✅ Password correct! Decrypting environment...${colors.reset}\n`);
+    } catch {
+      printError('ENV_PASSWORD is set but incorrect.');
+      if (nonInteractive) {
+        console.log(`${colors.yellow}Running in non-interactive mode — cannot fall back to prompt.${colors.reset}`);
+        console.log(`${colors.yellow}Update the ENV_PASSWORD Replit Secret and try again.${colors.reset}\n`);
+        process.exit(1);
       }
+      console.log(`${colors.yellow}Falling back to interactive prompt...${colors.reset}\n`);
     }
   }
 
   if (!decrypted) {
-    console.clear();
-    printHeader();
-    console.log(`\n${colors.red}╔══════════════════════════════════════════════════╗
+    if (nonInteractive) {
+      printError('No ENV_PASSWORD set and running in non-interactive mode — cannot prompt for password.');
+      console.log(`${colors.yellow}Set ENV_PASSWORD as a Replit Secret or run interactively: pnpm env:decrypt${colors.reset}\n`);
+      process.exit(1);
+    }
+    printPasswordHint();
+
+    let attemptsLeft = MAX_ATTEMPTS;
+
+    while (attemptsLeft > 0) {
+      const remainingMsg = attemptsLeft < MAX_ATTEMPTS
+        ? `${colors.red}(${attemptsLeft} attempts remaining)${colors.reset} `
+        : '';
+
+      const password = await askPassword(
+        `${remainingMsg}${colors.bold}🔐 Enter decryption password: ${colors.reset}`
+      );
+
+      if (!password || password.length < 4) {
+        console.log(`${colors.yellow}⚠️  Password too short (min 4 chars)${colors.reset}\n`);
+        continue;
+      }
+
+      try {
+        decrypted = decrypt(encryptedData, password);
+        console.log(`\n${colors.green}✅ Password correct! Decrypting environment...${colors.reset}\n`);
+        break;
+      } catch (error) {
+        attemptsLeft--;
+
+        if (attemptsLeft > 0) {
+          console.log(`${colors.red}❌ Wrong password! ${attemptsLeft} attempts remaining${colors.reset}\n`);
+
+          if (attemptsLeft <= 4) {
+            console.log(`${colors.gray}💡 Hint: Check if CAPS LOCK is on${colors.reset}`);
+            console.log(`${colors.gray}💡 Hint: Try your most commonly used passwords${colors.reset}\n`);
+          }
+        }
+      }
+    }
+
+    if (!decrypted) {
+      console.clear();
+      printHeader();
+      console.log(`\n${colors.red}╔══════════════════════════════════════════════════╗
 ║  🚫 MAX ATTEMPTS EXCEEDED — ENVIRONMENT LOCKED   ║
 ╚══════════════════════════════════════════════════╝${colors.reset}
 `);
-    console.log(`${colors.yellow}Too many incorrect password attempts.${colors.reset}`);
-    console.log(`${colors.yellow}For security, environment remains encrypted.${colors.reset}`);
-    console.log(`\n${colors.green}💡 What to do:${colors.reset}`);
-    console.log(`  1. Wait 5 minutes and try again`);
-    console.log(`  2. Contact admin to reset the password`);
-    console.log(`  3. Use: ${colors.cyan}node scripts/env-manager.mjs reset${colors.reset}`);
-    console.log(`     (This will delete existing .env.enc and create new)\n`);
-    process.exit(1);
+      console.log(`${colors.yellow}Too many incorrect password attempts.${colors.reset}`);
+      console.log(`${colors.yellow}For security, environment remains encrypted.${colors.reset}`);
+      console.log(`\n${colors.green}💡 What to do:${colors.reset}`);
+      console.log(`  1. Wait 5 minutes and try again`);
+      console.log(`  2. Contact admin to reset the password`);
+      console.log(`  3. Use: ${colors.cyan}node scripts/env-manager.mjs reset${colors.reset}`);
+      console.log(`     (This will delete existing .env.enc and create new)\n`);
+      process.exit(1);
+    }
   }
 
   const loaded = loadEnvToProcess(decrypted);

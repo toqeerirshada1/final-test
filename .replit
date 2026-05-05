@@ -80,7 +80,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm --filter @workspace/api-server dev"
+args = "[ -s .env ] || bash scripts/bootstrap.sh && pnpm --filter @workspace/api-server dev"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -92,7 +92,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=3000 BASE_PATH=/admin/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/admin dev"
+args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3000 BASE_PATH=/admin/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/admin dev"
 waitForPort = 3000
 
 [[workflows.workflow]]
@@ -104,7 +104,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=3001 BASE_PATH=/rider/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/rider-app dev"
+args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3001 BASE_PATH=/rider/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/rider-app dev"
 waitForPort = 3001
 
 [[workflows.workflow]]
@@ -116,7 +116,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
+args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
 waitForPort = 3002
 
 [[workflows.workflow]]
@@ -230,28 +230,8 @@ localPort = 3000
 externalPort = 3000
 
 [[ports]]
-localPort = 3001
-externalPort = 3001
-
-[[ports]]
-localPort = 3002
-externalPort = 3002
-
-[[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 8081
-externalPort = 4200
-
-[[ports]]
-localPort = 20716
-externalPort = 5000
 
 [[ports]]
 localPort = 21463
@@ -268,3 +248,7 @@ externalPort = 3000
 [[ports]]
 localPort = 23745
 externalPort = 3001
+
+[[ports]]
+localPort = 3002
+externalPort = 3002

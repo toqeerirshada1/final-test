@@ -1,14 +1,28 @@
 #!/bin/bash
 set -e
 
-# ─── ENV CHECK ────────────────────────────────────────────────────────────────
-# Post-merge runs non-interactively — cannot prompt for a password here.
-# Warn the developer if .env is missing; they must decrypt manually.
-if [ ! -f ".env" ] || [ ! -s ".env" ]; then
-  if [ -f ".env.enc" ] && [ -s ".env.enc" ]; then
-    echo "[post-merge] WARNING: .env missing but .env.enc found."
-    echo "[post-merge] Run:  pnpm env:decrypt  — then restart services."
+# ─── ENV CHECK / AUTO-DECRYPT ─────────────────────────────────────────────────
+# Always refresh .env from .env.enc when ENV_PASSWORD is available so that any
+# secrets changed in the pulled .env.enc are reflected immediately.
+if [ -f ".env.enc" ] && [ -s ".env.enc" ]; then
+  if [ -n "$ENV_PASSWORD" ]; then
+    # Decrypt when: .env is missing, empty, OR .env.enc is newer than .env
+    if [ ! -f ".env" ] || [ ! -s ".env" ] || [ ".env.enc" -nt ".env" ]; then
+      echo "[post-merge] ENV_PASSWORD is set — refreshing .env from .env.enc..."
+      node scripts/env-manager.mjs decrypt --non-interactive && echo "[post-merge] .env refreshed successfully." || {
+        echo "[post-merge] WARNING: Auto-decrypt failed (wrong ENV_PASSWORD?). Run:  pnpm env:decrypt  manually."
+      }
+    else
+      echo "[post-merge] .env is up to date (newer than .env.enc) — skipping decrypt"
+    fi
   else
+    if [ ! -f ".env" ] || [ ! -s ".env" ]; then
+      echo "[post-merge] WARNING: .env missing but .env.enc found."
+      echo "[post-merge] Set ENV_PASSWORD as a Replit Secret for auto-decrypt, or run:  pnpm env:decrypt"
+    fi
+  fi
+else
+  if [ ! -f ".env" ] || [ ! -s ".env" ]; then
     echo "[post-merge] WARNING: No .env or .env.enc found."
     echo "[post-merge] Run:  pnpm env:create   — to set up encrypted environment."
   fi

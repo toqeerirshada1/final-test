@@ -49,17 +49,19 @@ AJKMart is a pnpm workspace monorepo containing 5 deployable apps and 10 shared 
 
 ### 2.1 Replit (Recommended for Development)
 
-```bash
-# 1. Open the project in Replit — it auto-runs pnpm install
-# 2. Decrypt the environment (password: Khan@123.com)
-pnpm env:decrypt
+**Zero-touch setup — 3 steps:**
 
-# 3. Start all services via the Run button (or in shell):
-pnpm replit-start
-```
+1. Import the repo from GitHub into any Replit account
+2. Add one Replit Secret: `ENV_PASSWORD = Khan@123.com`
+3. Press **Run** — everything bootstraps automatically
 
-The Replit workflow (`Start application`) calls `node scripts/launchers/start.mjs replit`.
-It auto-prompts for the env password if `.env` is missing.
+The bootstrap (`scripts/bootstrap.sh`) runs before each service on first boot and:
+- Installs dependencies (`pnpm install`) if missing or stale
+- Auto-decrypts `.env.enc` using `ENV_PASSWORD` (no interactive prompt)
+- Pushes the database schema (`pnpm db:push`) if `DATABASE_URL` is set
+- Skips all of the above instantly on subsequent starts (`.env` already present)
+
+> **Manual fallback:** If `ENV_PASSWORD` is not set, the bootstrap falls back to an interactive password prompt so it still works without the secret.
 
 **Service URLs in Replit preview pane:**
 
