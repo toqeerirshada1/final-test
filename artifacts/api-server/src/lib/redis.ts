@@ -21,6 +21,7 @@ function sanitizeRedisUrl(raw: string): string {
   url = url.replace(/^redis-cli\s+/i, "").trim();
   // 3. Strip shell flag prefixes ("--tls -u", "--tls", "-u")
   url = url.replace(/^(?:--tls\s+-u\s+|--tls\s+|-u\s+)/i, "").trim();
+  url = url.replace(/^["']|["']$/g, "").trim();
   // 4. Upstash requires TLS — promote redis:// to rediss://
   if (url.startsWith("redis://")) {
     url = "rediss://" + url.slice("redis://".length);
