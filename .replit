@@ -34,18 +34,6 @@ args = "Start application"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Admin Panel"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Rider App"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Vendor App"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "typecheck:api"
 
 [[workflows.workflow.tasks]]
@@ -59,6 +47,18 @@ args = "typecheck:vendor"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "typecheck:rider"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Admin Panel"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Rider App"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Vendor App"
 
 [[workflows.workflow]]
 name = "check-permissions"
@@ -84,51 +84,12 @@ args = "[ -s .env ] || bash scripts/bootstrap.sh && pnpm --filter @workspace/api
 waitForPort = 5000
 
 [[workflows.workflow]]
-name = "Admin Panel"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3000 BASE_PATH=/admin/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/admin dev"
-waitForPort = 3000
-
-[[workflows.workflow]]
-name = "Rider App"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3001 BASE_PATH=/rider/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/rider-app dev"
-waitForPort = 3001
-
-[[workflows.workflow]]
-name = "Vendor App"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
-waitForPort = 3002
-
-[[workflows.workflow]]
 name = "typecheck:api"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd /home/runner/workspace/lib/db && pnpm build && cd /home/runner/workspace/lib/phone-utils && pnpm build && cd /home/runner/workspace/artifacts/api-server && pnpm tsc --noEmit"
-
-[workflows.workflow.metadata]
-isValidation = true
+args = "cd /home/runner/workspace/lib/db && pnpm exec tsc && cd /home/runner/workspace/lib/phone-utils && pnpm exec tsc && cd /home/runner/workspace/artifacts/api-server && pnpm exec tsc -p tsconfig.json --noEmit"
 
 [[workflows.workflow]]
 name = "typecheck:admin"
@@ -136,10 +97,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd /home/runner/workspace/artifacts/admin && pnpm tsc --noEmit"
-
-[workflows.workflow.metadata]
-isValidation = true
+args = "cd /home/runner/workspace/artifacts/admin && pnpm exec tsc --noEmit"
 
 [[workflows.workflow]]
 name = "typecheck:vendor"
@@ -147,10 +105,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd /home/runner/workspace/artifacts/vendor-app && pnpm tsc --noEmit"
-
-[workflows.workflow.metadata]
-isValidation = true
+args = "cd /home/runner/workspace/artifacts/vendor-app && pnpm exec tsc --noEmit"
 
 [[workflows.workflow]]
 name = "typecheck:rider"
@@ -158,10 +113,43 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd /home/runner/workspace/artifacts/rider-app && pnpm tsc --noEmit"
+args = "cd /home/runner/workspace/artifacts/rider-app && pnpm exec tsc --noEmit"
+
+[[workflows.workflow]]
+name = "Admin Panel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3000 BASE_PATH=/admin/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/admin dev"
+waitForPort = 3000
 
 [workflows.workflow.metadata]
-isValidation = true
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Rider App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3001 BASE_PATH=/rider/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/rider-app dev"
+waitForPort = 3001
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Vendor App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
+waitForPort = 3002
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -217,6 +205,12 @@ VITE_API_BASE_URL = "http://localhost:5000"
 ADMIN_LEGACY_AUTH_DISABLED = "0"
 ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN = "15"
 ADMIN_DEV_PORT = "3000"
+JWT_SECRET = "70d7bbb271fc1cf1a6397e8407153c9212f0e27c4b1b38c3f56ec08701718bc3849fe94eebaaed82f47d1cd93830ca7fe3255983484582511c8860cbec76f7cb"
+ADMIN_ACCESS_TOKEN_SECRET = "4155520e37c912db3f619ba139da551f3929df71a3501bc38bac7555f6d91b48875605d6e32b2a7ef66c68069f12f00cf212545db6aa440495089cfb9ad67dad"
+ADMIN_REFRESH_TOKEN_SECRET = "3c55bd900ca69183a11dc19b0472308ea6056d393b67228364a2fdd36c9c4d5e1bf6a8087a9f23789e01e9e90dbc577107fdb129bd2980dcbd5f3c87dc13bdcb"
+ADMIN_CSRF_SECRET = "f2c1d8a343eb9b990f34d4be93fb7bd54b9dceb6a21484328559f48e9c4f14cb16e59aa6223d751b9110c8c24e20c5eed0d8f43feae6713e25d7378e64aed9f3"
+ERROR_REPORT_HMAC_SECRET = "b02e762d5137b4f8f67c468c4648041a336bc955896917a7c519a0a85b2e085b"
+ADMIN_JWT_SECRET = "0bf96d92374ef22e78a01b29ee69c0356a06e30e3e194c75fa2458704d296412833291a297210a3b6037fc99e5f1c1117b0b8b8c358ff9aa9561c8aa3029b186"
 
 [userenv.production]
 
@@ -234,10 +228,7 @@ id = "module:nodejs-24/languageServer:typescript-language-server"
 
 [[ports]]
 localPort = 3000
-
-[[ports]]
-localPort = 3002
-externalPort = 3002
+externalPort = 3000
 
 [[ports]]
 localPort = 5000
@@ -254,3 +245,11 @@ externalPort = 3003
 [[ports]]
 localPort = 23744
 externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 3002
+externalPort = 3002

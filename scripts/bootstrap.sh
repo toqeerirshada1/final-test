@@ -33,8 +33,8 @@ if [ -z "$DB_URL" ]; then
 fi
 
 if [ ! -f "$DB_STAMP" ]; then
-  echo "[bootstrap] Running pnpm db:push (first boot)..."
-  pnpm db:push && touch "$DB_STAMP" && echo "[bootstrap] Schema pushed successfully."
+  echo "[bootstrap] Running pnpm --filter @workspace/db push (first boot)..."
+  pnpm --filter @workspace/db push && touch "$DB_STAMP" && echo "[bootstrap] Schema pushed successfully."
 else
   echo "[bootstrap] DB already pushed — skipping (delete node_modules/.bootstrap-db-stamp to force)"
 fi

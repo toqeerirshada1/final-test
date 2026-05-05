@@ -47,8 +47,12 @@ function startServer() {
 
   console.log("[restart-wrapper] Starting API server\u2026");
 
+  // Use local tsx binary from the package's node_modules to avoid PATH issues
+  const tsxBin = path.resolve(PKG_ROOT, "node_modules", ".bin", "tsx");
+  const tsxCmd = existsSync(tsxBin) ? tsxBin : "tsx";
+
   child = spawn(
-    "tsx",
+    tsxCmd,
     ["--enable-source-maps", "./src/index.ts"],
     {
       stdio: "inherit",
