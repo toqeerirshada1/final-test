@@ -54,10 +54,10 @@ AJKMart is a pnpm workspace monorepo containing 5 deployable apps and 10 shared 
 2. Add your secrets in the **Replit Secrets panel** (padlock icon): at minimum `DATABASE_URL` and the JWT/auth secrets
 3. Press **Run** — everything bootstraps automatically
 
-The bootstrap (`scripts/bootstrap.sh`) runs before each service on first boot and:
+`scripts/secure-start.mjs` runs automatically and:
 - Installs dependencies (`pnpm install`) if missing or stale
 - Pushes the database schema (`pnpm db:push`) if `DATABASE_URL` is set
-- Skips all of the above instantly on subsequent starts
+- Starts all five services in parallel with health checks
 
 **Service URLs in Replit preview pane:**
 
@@ -82,10 +82,10 @@ pnpm install
 cp .env.example .env
 
 # 4. Start all services
-pnpm codespace-start
+pnpm secure-start
 
 # Or start individual services:
-pnpm dev:api              # API on :8080
+pnpm dev:api              # API on :5000
 pnpm dev:admin            # Admin on :5173
 pnpm dev:vendor           # Vendor on :5174
 pnpm dev:rider            # Rider on :5175
@@ -109,10 +109,10 @@ cp .env.example .env
 pnpm db:push
 
 # 4. Start all services
-pnpm local-start
+pnpm secure-start
 
-# Or use the full dev runner:
-node scripts/run-dev-all.mjs
+# Or start services in parallel (foreground, with combined output):
+pnpm dev:all
 ```
 
 ---
@@ -132,10 +132,7 @@ cp .env.example .env
 node scripts/build-production.mjs
 
 # 4. Start with PM2
-node scripts/pm2-control.mjs start
-
-# Or use the all-in-one script:
-bash scripts/server-up.sh
+pnpm pm2:start
 ```
 
 See [Section 7](#7-production-deployment-vps) for Caddy / Nginx config.
@@ -169,15 +166,12 @@ See [Section 7](#7-production-deployment-vps) for Caddy / Nginx config.
 | File | Purpose |
 |---|---|
 | ~~`env-manager.mjs`~~ | Removed — use Replit Secrets or `.env` instead |
-| `launchers/start.mjs` | Multi-profile launcher (replit/codespace/vps/local) |
-| `launchers/replit.mjs` | Replit-specific service start |
-| `launchers/codespace.mjs` | Codespace-specific service start |
+| `secure-start.mjs` | Universal starter — installs deps, pushes DB, starts all services |
 | `dev-ctl.mjs` | Developer control script — start/stop individual services |
-| `run-dev-all.mjs` | Start all 5 services in parallel (local dev) |
 | `build-production.mjs` | Build all apps for production |
 | `pm2-control.mjs` | Start / stop PM2 via ecosystem.config.cjs |
-| `server-up.sh` | All-in-one VPS setup: install → db push → build → PM2 start |
 | `post-merge.sh` | Auto-runs after git merge — installs deps, warns if .env missing |
+| `setup.sh` | One-command setup (install + DB push) |
 | `src/seed.ts` | Sample product seed data — run to populate dev database |
 
 ---
@@ -274,13 +268,13 @@ cd ajkmart
 pnpm install
 cp .env.example .env      # fill in your credentials
 pnpm db:push              # apply schema to database
-pnpm replit-start         # or codespace-start / local-start
+pnpm secure-start         # start all services
 ```
 
 ### Daily Work
 
 ```bash
-pnpm replit-start         # start all services
+pnpm secure-start         # start all services
 # OR
 pnpm dev:api              # start only API
 pnpm dev:admin            # start only admin
@@ -320,11 +314,13 @@ Inserts 20 sample products (groceries, food, household) for vendor `vendor_demo_
 
 | Script | Command | Description |
 |---|---|---|
-| `pnpm replit-start` | `node scripts/launchers/start.mjs replit` | Start all services on Replit |
-| `pnpm codespace-start` | `node scripts/launchers/start.mjs codespace` | Start all services in Codespace |
-| `pnpm vps-start` | `node scripts/launchers/start.mjs vps` | Start all services on VPS |
-| `pnpm local-start` | `node scripts/launchers/start.mjs local` | Start all on local machine |
-| `pnpm start:all` | `node scripts/run-dev-all.mjs` | Alternative: start all in one process |
+| `pnpm secure-start` | `node scripts/secure-start.mjs` | Start all services (any platform) |
+| `pnpm start:all` | `node scripts/secure-start.mjs` | Alias for secure-start |
+| `pnpm dev:all` | shell `&` parallel | Start all 5 services in foreground |
+| `pnpm pm2:start` | `node scripts/pm2-control.mjs start` | Start services via PM2 (production) |
+| `pnpm pm2:stop` | `node scripts/pm2-control.mjs stop` | Stop PM2 services |
+| `pnpm pm2:restart` | `pnpm dlx pm2 restart all` | Restart PM2 services |
+| `pnpm pm2:logs` | `pnpm dlx pm2 logs` | View PM2 logs |
 
 ### Dev Scripts (individual services)
 
@@ -450,7 +446,7 @@ pnpm db:push              # re-push schema after fixing DATABASE_URL
 
 ### Port already in use
 
-The launcher has auto port-retry (up to 10 ports). Or set `PORT_FALLBACK_ENABLE=false` to get a clear error.
+The API server has auto port-retry (up to 10 ports). Or set `PORT_FALLBACK_ENABLE=false` to get a clear error.
 
 ### TypeScript / Build errors
 

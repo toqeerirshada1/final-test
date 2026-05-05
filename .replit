@@ -80,7 +80,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "[ -s .env ] || bash scripts/bootstrap.sh && pnpm --filter @workspace/api-server dev"
+args = "pnpm --filter @workspace/api-server dev"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -119,37 +119,37 @@ args = "cd /home/runner/workspace/artifacts/rider-app && pnpm exec tsc --noEmit"
 name = "Admin Panel"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3000 BASE_PATH=/admin/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/admin dev"
-waitForPort = 3000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3000 BASE_PATH=/admin/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/admin dev"
+waitForPort = 3000
 
 [[workflows.workflow]]
 name = "Rider App"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3001 BASE_PATH=/rider/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/rider-app dev"
-waitForPort = 3001
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3001 BASE_PATH=/rider/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/rider-app dev"
+waitForPort = 3001
 
 [[workflows.workflow]]
 name = "Vendor App"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "[ -s .env ] || bash scripts/bootstrap.sh && PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
-waitForPort = 3002
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
+waitForPort = 3002
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
