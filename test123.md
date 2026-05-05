@@ -1000,7 +1000,7 @@ pnpm env:update
 Reset (Emergency):
 bash
 pnpm env:reset
-# Deletes .env.enc (creates backup first)
+# Deletes .env.enc (creates backup first)ge han
 # Then: pnpm env:create
 🔐 SECURITY FEATURES
 Feature	Detail

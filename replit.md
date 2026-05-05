@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Monorepo Structure
 
-The project is structured as a pnpm workspace monorepo, enforcing pnpm usage. It includes shared libraries for database schema, API client, validation, and internationalization, consumed by various deployable applications such as the API server, admin panel, rider app, vendor app, and customer super-app. TypeScript project references are used for efficient type-checking and build processes.
+The project is structured as a pnpm workspace monorepo, enforcing pnpm usage. It includes shared libraries for database schema, API client, validation, internationalization, and integrations, consumed by various deployable applications such as the API server, admin panel, rider app, vendor app, and customer super-app. TypeScript project references are used for efficient type-checking and build processes.
 
 ### Applications
 
@@ -56,12 +56,12 @@ Each artifact runs as a separate Replit workflow. After `pnpm install`, restart 
 
 | Workflow name | Preview path | Port |
 |---|---|---|
-| `artifacts/admin: web` | `/admin/` | 23744 (dynamic) |
-| `artifacts/vendor-app: web` | `/vendor/` | dynamic |
-| `artifacts/rider-app: web` | `/rider/` | dynamic |
-| `artifacts/mockup-sandbox: Component Preview Server` | `/__mockup` | dynamic |
+| `artifacts/admin: web` | `/admin/` | 23744 |
+| `artifacts/vendor-app: web` | `/vendor/` | 23745 |
+| `artifacts/rider-app: web` | `/rider/` | 22969 |
+| `artifacts/mockup-sandbox: Component Preview Server` | `/__mockup` | 20716 |
 | `artifacts/api-server: API Server` | `/api` | 8080 |
-| `artifacts/ajkmart: expo` | `/` | dynamic |
+| `artifacts/ajkmart: expo` | `/` | 5000 |
 
 ### Shared Libraries
 The monorepo contains shared libraries under `lib/` that are consumed by the artifacts via workspace `*` references:
@@ -72,9 +72,12 @@ The monorepo contains shared libraries under `lib/` that are consumed by the art
 - `@workspace/service-constants` — shared enums, IDs, and feature flags
 - `@workspace/auth-utils` — JWT helpers shared between server and clients
 - `@workspace/admin-timing-shared` — time-slot utilities for the admin panel
+- `@workspace/phone-utils` — phone number utilities and helpers
+- `@workspace/integrations` — shared integration helpers and adapters
+- `@workspace/integrations-gemini-ai` — Gemini AI integration utilities
 
 ### Environment Variables
-Secrets and environment variables are managed via Replit's environment secrets system. The project ships an encrypted `.env` bundle (`scripts/decrypt.mjs`). For local/VPS development use `pnpm run env` to decrypt it.
+Secrets and environment variables are managed via Replit's environment secrets system. The project ships an encrypted `.env` bundle. For local/VPS development use `pnpm run env` to decrypt it.
 
 ## External Dependencies
 
