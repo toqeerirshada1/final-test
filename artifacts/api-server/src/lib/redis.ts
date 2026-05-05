@@ -14,18 +14,32 @@
  */
 import Redis from "ioredis";
 
-function sanitizeRedisUrl(raw: string): string {
-  let url = raw.trim();
-  try {
-    url = decodeURIComponent(url).trim();
-  } catch {
-    url = raw.trim();
+function sanitizeRedisUrl(raw: string): string | null {
+  const candidates = [raw, (() => {
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  })()].map(v => v.trim().replace(/^["']|["']$/g, "").trim());
+
+  for (const candidate of candidates) {
+    const fixed = candidate
+      .replace(/^redis-cli\s+/i, "")
+      .replace(/^(?:--tls\s+-u\s+|--tls\s+|-u\s+)/i, "")
+      .trim();
+
+    const normalized = fixed.startsWith("redis://")
+      ? `rediss://${fixed.slice("redis://".length)}`
+      : fixed;
+
+    try {
+      const parsed = new URL(normalized);
+      if (parsed.hostname) return normalized;
+    } catch {}
   }
-  url = url.replace(/^["']|["']$/g, "").trim();
-  if (url.startsWith("redis://")) {
-    url = "rediss://" + url.slice("redis://".length);
-  }
-  return url;
+
+  return null;
 }
 
 let redisClient: Redis | null = null;
@@ -34,17 +48,7 @@ const rawUrl = process.env["REDIS_URL"];
 
 if (rawUrl) {
   const url = sanitizeRedisUrl(rawUrl);
-
-  // Validate the URL has a real hostname before handing it to ioredis
-  let valid = false;
-  try {
-    const parsed = new URL(url);
-    valid = parsed.hostname.length > 0;
-  } catch {
-    console.error("[redis] REDIS_URL is not a valid URL after sanitization — falling back to in-memory store", { rawUrl, url });
-  }
-
-  if (valid) {
+  if (url) {
     try {
       redisClient = new Redis(url, {
         enableOfflineQueue: true,
@@ -67,6 +71,8 @@ if (rawUrl) {
       console.error("[redis] Failed to initialise client:", (err as Error).message);
       redisClient = null;
     }
+  } else {
+    console.warn("[redis] REDIS_URL is invalid — rate-limit counters will use in-memory store");
   }
 } else {
   console.warn("[redis] REDIS_URL not set — rate-limit counters will use in-memory store");
