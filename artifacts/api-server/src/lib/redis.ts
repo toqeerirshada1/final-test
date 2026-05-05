@@ -15,14 +15,13 @@
 import Redis from "ioredis";
 
 function sanitizeRedisUrl(raw: string): string {
-  // 1. Percent-decode any URL-encoded characters (handles %20 etc.)
-  let url = decodeURIComponent(raw).trim();
-  // 2. Strip "redis-cli" command name if the full CLI invocation was stored
-  url = url.replace(/^redis-cli\s+/i, "").trim();
-  // 3. Strip shell flag prefixes ("--tls -u", "--tls", "-u")
-  url = url.replace(/^(?:--tls\s+-u\s+|--tls\s+|-u\s+)/i, "").trim();
+  let url = raw.trim();
+  try {
+    url = decodeURIComponent(url).trim();
+  } catch {
+    url = raw.trim();
+  }
   url = url.replace(/^["']|["']$/g, "").trim();
-  // 4. Upstash requires TLS — promote redis:// to rediss://
   if (url.startsWith("redis://")) {
     url = "rediss://" + url.slice("redis://".length);
   }
@@ -42,7 +41,7 @@ if (rawUrl) {
     const parsed = new URL(url);
     valid = parsed.hostname.length > 0;
   } catch {
-    console.error("[redis] REDIS_URL is not a valid URL after sanitization — falling back to in-memory store");
+    console.error("[redis] REDIS_URL is not a valid URL after sanitization — falling back to in-memory store", { rawUrl, url });
   }
 
   if (valid) {
