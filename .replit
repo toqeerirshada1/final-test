@@ -206,6 +206,7 @@ VAPID_CONTACT_EMAIL = ""
 ALLOWED_ORIGINS = ""
 VENDOR_DEV_PORT = "3002"
 RIDER_DEV_PORT = "3001"
+DATABASE_URL = "postgresql://neondb_owner:npg_8CZnNQxSivM4@ep-withered-pond-aod3mqmg-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 [userenv.production]
 
