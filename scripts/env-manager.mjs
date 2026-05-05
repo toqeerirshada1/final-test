@@ -734,6 +734,174 @@ const showCommand = async () => {
   printError('Max attempts exceeded!');
 };
 
+// ==================== EXPORT COMMAND ====================
+const exportCommand = async () => {
+  printHeader();
+  console.log(`${colors.cyan}📤 Export .env.example (secrets redacted)${colors.reset}\n`);
+
+  const envPath    = path.join(ROOT, '.env');
+  const outputPath = path.join(ROOT, '.env.example');
+  let envContent   = null;
+
+  // Try .env first (no password needed)
+  if (existsSync(envPath) && readFileSync(envPath, 'utf8').trim().length > 0) {
+    envContent = readFileSync(envPath, 'utf8');
+    console.log(`${colors.green}✅ Reading from .env${colors.reset}\n`);
+  } else if (existsSync(ENCRYPTED_FILE) && readFileSync(ENCRYPTED_FILE, 'utf8').trim().length > 0) {
+    console.log(`${colors.yellow}🔐 .env not found — decrypting .env.enc${colors.reset}\n`);
+    const encryptedData = readFileSync(ENCRYPTED_FILE, 'utf8').trim();
+    for (let i = MAX_ATTEMPTS; i > 0; i--) {
+      const password = await askPassword(`${colors.bold}🔐 Enter password (${i} attempts): ${colors.reset}`);
+      try {
+        envContent = decrypt(encryptedData, password);
+        console.log(`\n${colors.green}✅ Decrypted!${colors.reset}\n`);
+        break;
+      } catch (e) {
+        if (i > 1) printError(`Wrong password! ${i - 1} attempts remaining`);
+        else { printError('Max attempts exceeded!'); process.exit(1); }
+      }
+    }
+  } else {
+    printError('No .env or .env.enc found!');
+    console.log(`\n${colors.yellow}Run: ${colors.cyan}pnpm env:create${colors.reset}\n`);
+    process.exit(1);
+  }
+
+  const currentVars = parseEnvContent(envContent);
+
+  // ── Placeholder rules ────────────────────────────────────────────────────
+  const isSecretKey = (k) =>
+    k.includes('SECRET') || k.includes('JWT') || k.includes('TOKEN') ||
+    k.includes('HMAC')   || k.includes('KEY') || k.includes('PASSWORD') ||
+    k.includes('SID')    || k.includes('AUTH');
+
+  const isApiKey = (k) =>
+    k.includes('API_KEY') || k.includes('API_TOKEN') || k.includes('DSN');
+
+  const placeholder = (key) => {
+    if (isApiKey(key))        return `your-${key.toLowerCase().replace(/_/g, '-')}`;
+    if (isSecretKey(key))     return `your-${key.toLowerCase().replace(/_/g, '-')}-here`;
+    return null;  // null = keep real value (not sensitive)
+  };
+
+  // ── Build .env.example with category headers ──────────────────────────────
+  const domainSections = [
+    {
+      header: '# ─── Database ────────────────────────────────────────',
+      keys: ['DATABASE_URL'],
+    },
+    {
+      header: '# ─── JWT & Auth Secrets ──────────────────────────────',
+      keys: ['JWT_SECRET','ADMIN_ACCESS_TOKEN_SECRET','ADMIN_REFRESH_TOKEN_SECRET','ADMIN_CSRF_SECRET','JWT_ISSUER'],
+    },
+    {
+      header: '# ─── Admin Seed ──────────────────────────────────────',
+      keys: ['ADMIN_SEED_USERNAME','ADMIN_SEED_PASSWORD','ADMIN_SEED_EMAIL','ADMIN_SEED_NAME'],
+    },
+    {
+      header: '# ─── Security ───────────────────────────────────────',
+      keys: ['ERROR_REPORT_HMAC_SECRET','ALLOWED_ORIGINS','ADMIN_LEGACY_AUTH_DISABLED','ADMIN_PASSWORD_RESET_TOKEN_TTL_MIN'],
+    },
+    {
+      header: '# ─── Ports & URLs ───────────────────────────────────',
+      keys: ['PORT','PORT_FALLBACK_ENABLE','PORT_MAX_RETRIES','APP_BASE_URL','ADMIN_BASE_URL','FRONTEND_URL','CLIENT_URL'],
+    },
+    {
+      header: '# ─── Firebase ───────────────────────────────────────',
+      keys: ['FIREBASE_PROJECT_ID','FIREBASE_CLIENT_EMAIL','FIREBASE_PRIVATE_KEY'],
+    },
+    {
+      header: '# ─── Twilio / SMS ───────────────────────────────────',
+      keys: ['TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_FROM_NUMBER'],
+    },
+    {
+      header: '# ─── Email ──────────────────────────────────────────',
+      keys: ['SENDGRID_API_KEY','SMTP_HOST'],
+    },
+    {
+      header: '# ─── AI ─────────────────────────────────────────────',
+      keys: ['GEMINI_API_KEY'],
+    },
+    {
+      header: '# ─── Maps & Routing ─────────────────────────────────',
+      keys: ['GOOGLE_MAPS_API_KEY','OSRM_API_URL'],
+    },
+    {
+      header: '# ─── Infrastructure ─────────────────────────────────',
+      keys: ['REDIS_URL','SENTRY_DSN'],
+    },
+    {
+      header: '# ─── Runtime Flags ──────────────────────────────────',
+      keys: ['NODE_ENV','LOG_LEVEL'],
+    },
+    {
+      header: '# ─── Expo / Vite ────────────────────────────────────',
+      keys: ['EXPO_PUBLIC_DOMAIN','VITE_API_BASE_URL','VITE_API_PROXY_TARGET'],
+    },
+  ];
+
+  const lines = [
+    `# AJKMart Super-App — Environment Example`,
+    `# Generated: ${new Date().toISOString()}`,
+    `# Copy this file to .env and fill in the values.`,
+    `# Secrets marked with YOUR-* must be set before running.`,
+    `# Run: pnpm env:create  to set up encrypted environment instead.`,
+    '',
+  ];
+
+  const accountedFor = new Set();
+  let redactedCount = 0;
+  let keptCount     = 0;
+
+  for (const section of domainSections) {
+    lines.push(section.header);
+    for (const key of section.keys) {
+      accountedFor.add(key);
+      const raw   = currentVars[key] ?? REQUIRED_VARIABLES[key] ?? '';
+      const ph    = placeholder(key);
+      const value = ph ? ph.toUpperCase().replace(/-/g, '_') : raw;
+      if (ph) redactedCount++;
+      else    keptCount++;
+      lines.push(`${key}=${value}`);
+    }
+    lines.push('');
+  }
+
+  // Any vars in .env that aren't in our sections (user-added custom vars)
+  const extra = Object.keys(currentVars).filter(k => !accountedFor.has(k));
+  if (extra.length > 0) {
+    lines.push('# ─── Custom / Extra ─────────────────────────────────');
+    for (const key of extra) {
+      const ph    = placeholder(key);
+      const value = ph ? ph.toUpperCase().replace(/-/g, '_') : currentVars[key];
+      if (ph) redactedCount++;
+      else    keptCount++;
+      lines.push(`${key}=${value}`);
+    }
+    lines.push('');
+  }
+
+  const output = lines.join('\n');
+  writeFileSync(outputPath, output);
+
+  console.log(`${colors.green}╔══════════════════════════════════════════════════╗
+║   ✅ .env.example GENERATED SUCCESSFULLY         ║
+╚══════════════════════════════════════════════════╝${colors.reset}
+`);
+  console.log(`${colors.green}✅ File written:${colors.reset}       .env.example`);
+  console.log(`${colors.green}✅ Variables kept:${colors.reset}     ${keptCount}  (non-sensitive, real values)`);
+  console.log(`${colors.yellow}🔒 Secrets redacted:${colors.reset}   ${redactedCount}  (replaced with placeholders)`);
+  if (extra.length > 0) {
+    console.log(`${colors.cyan}➕ Extra vars included:${colors.reset} ${extra.length}  (custom variables from .env)`);
+  }
+
+  console.log(`\n${colors.cyan}📋 Next steps:${colors.reset}`);
+  console.log(`   ${colors.green}1. Review .env.example before committing${colors.reset}`);
+  console.log(`   ${colors.green}2. git add .env.example${colors.reset}`);
+  console.log(`   ${colors.green}3. Teammates run: ${colors.cyan}cp .env.example .env${colors.reset}${colors.green} then fill secrets${colors.reset}`);
+  console.log(`   ${colors.green}   Or better:     ${colors.cyan}pnpm env:create${colors.reset}${colors.green} for encrypted setup${colors.reset}\n`);
+};
+
 // ==================== VERIFY COMMAND ====================
 const verifyCommand = async () => {
   printHeader();
@@ -925,6 +1093,7 @@ ${colors.green}Commands:${colors.reset}
   ${colors.cyan}update${colors.reset}     Update variables or password
   ${colors.cyan}show${colors.reset}       View all variables (secrets masked)
   ${colors.cyan}verify${colors.reset}     Health-check report with score
+  ${colors.cyan}export${colors.reset}     Generate .env.example (secrets redacted)
   ${colors.cyan}reset${colors.reset}      Delete & start fresh (with backup)
   ${colors.cyan}help${colors.reset}       Show this help
 
@@ -934,6 +1103,7 @@ ${colors.green}Usage via pnpm:${colors.reset}
   ${colors.yellow}pnpm env:update${colors.reset}
   ${colors.yellow}pnpm env:show${colors.reset}
   ${colors.yellow}pnpm env:verify${colors.reset}
+  ${colors.yellow}pnpm env:export${colors.reset}
   ${colors.yellow}pnpm env:reset${colors.reset}
 
 ${colors.green}Direct usage:${colors.reset}
@@ -993,6 +1163,12 @@ const main = async () => {
     case 'health':
     case 'status':
       await verifyCommand();
+      break;
+
+    case 'export':
+    case 'example':
+    case 'template':
+      await exportCommand();
       break;
 
     case 'help':
