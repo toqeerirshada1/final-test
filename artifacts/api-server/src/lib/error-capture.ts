@@ -90,7 +90,7 @@ export function captureBackendError(opts: CaptureOpts): void {
     stackTrace: opts.stackTrace?.slice(0, 50000) || null,
     metadata: opts.metadata || null,
   })
-  .catch((err) => {
+  .catch((err: unknown) => {
     logger.warn({ err }, "Failed to capture error report to DB");
   });
 }

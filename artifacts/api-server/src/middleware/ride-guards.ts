@@ -41,9 +41,9 @@ export function requireRideState(allowedStates: string[]) {
       ride = found;
     }
 
-    if (!allowedStates.includes(ride.status)) {
+    if (!allowedStates.includes(ride!.status)) {
       res.status(400).json({
-        error: `Ride cannot be modified in '${ride.status}' state. Allowed: ${allowedStates.join(", ")}`,
+        error: `Ride cannot be modified in '${ride!.status}' state. Allowed: ${allowedStates.join(", ")}`,
       });
       return;
     }

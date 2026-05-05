@@ -374,7 +374,7 @@ function analyzeErrorCause(report: ErrorReport): {
   return { causes, consequences, fixes };
 }
 
-function useTabCount(tab: Exclude<Tab, "customers">, sourceApp: string, severity: string, errorType: string) {
+function useTabCount(tab: Exclude<Tab, "customers" | "filescan">, sourceApp: string, severity: string, errorType: string) {
   const statuses = TAB_STATUS_FILTERS[tab];
   const p = new URLSearchParams({ page: "1", limit: "1" });
   statuses.forEach(s => p.append("status", s));

@@ -205,6 +205,7 @@ export default function OtpControl() {
       const t = setTimeout(loadStatus, 1500);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [remaining, status?.isGloballyDisabled, status?.disabledUntil, loadStatus]);
 
   /* ── Global suspension actions ── */

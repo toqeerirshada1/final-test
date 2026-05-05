@@ -32,7 +32,7 @@ function makeStore(prefix: string): Store | undefined {
             console.error(`[rate-limit:${prefix}] Redis error:`, err.message);
           }
           throw err; // re-throw so express-rate-limit skips the store
-        });
+        }) as ReturnType<import("rate-limit-redis").SendCommandFn>;
       },
     });
   } catch (err) {

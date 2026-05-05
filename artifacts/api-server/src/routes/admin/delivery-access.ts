@@ -9,6 +9,7 @@ import {
 import { generateId } from "../../lib/id.js";
 import { addAuditLog, invalidateDeliveryAccessCache } from "../../lib/delivery-access.js";
 import { sendSuccess, sendCreated, sendError, sendNotFound, sendValidationError } from "../../lib/response.js";
+import { logger } from "../../lib/logger.js";
 
 const router = Router();
 

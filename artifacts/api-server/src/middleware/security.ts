@@ -277,7 +277,7 @@ export function addAuditEntry(entry: Omit<AuditEntry, "timestamp">) {
     affectedUserId:   entry.affectedUserId ?? null,
     affectedUserName: entry.affectedUserName ?? null,
     affectedUserRole: entry.affectedUserRole ?? null,
-  }).catch((err) => {
+  }).catch((err: unknown) => {
     logger.warn({ err, action: entry.action }, "[audit] DB persist failed (in-memory copy retained)");
   });
 }

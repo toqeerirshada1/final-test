@@ -7,6 +7,7 @@ import { generateId } from "../lib/id.js";
 import { sendSuccess, sendCreated, sendValidationError, sendNotFound } from "../lib/response.js";
 import { validateBody, validateQuery } from "../middleware/validate.js";
 import { adminAuth, getPlatformSettings } from "./admin.js";
+import { logger } from "../lib/logger.js";
 
 const router: IRouter = Router();
 

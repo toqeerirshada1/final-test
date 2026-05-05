@@ -359,7 +359,7 @@ router.post("/conditions", async (req, res) => {
         userId,
         userRole,
         conditionType,
-        severity: severity as any,
+        severity,
         category,
         reason,
         notes: notes ?? null,
@@ -367,7 +367,7 @@ router.post("/conditions", async (req, res) => {
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         isActive: true,
         metadata: metadata ?? null,
-      })
+      } as any)
       .returning();
 
     res.json({ success: true, data: created });
@@ -545,11 +545,11 @@ router.post("/condition-rules", async (req, res) => {
         operator,
         threshold: String(threshold),
         conditionType,
-        severity: sev as any,
+        severity: sev,
         cooldownHours: cooldownHours != null ? Number(cooldownHours) : 24,
         modeApplicability: modeApplicability ?? "default,ai_recommended,custom",
         isActive: isActive ?? true,
-      })
+      } as any)
       .returning();
     return res.json({ success: true, data: created });
   } catch (error) {

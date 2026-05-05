@@ -576,7 +576,7 @@ export function initSocketIO(httpServer: HttpServer): SocketIOServer {
         const deleteWithRetry = (attempt: number) => {
           db.delete(liveLocationsTable)
             .where(eq(liveLocationsTable.userId, riderId))
-            .catch((err) => {
+            .catch((err: unknown) => {
               if (attempt < 3) {
                 setTimeout(() => deleteWithRetry(attempt + 1), 1000 * attempt);
               } else {

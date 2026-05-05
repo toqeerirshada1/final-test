@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useHasPermission } from "@/hooks/usePermissions";
 import { PageHeader } from "@/components/shared";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -187,6 +188,7 @@ function DashboardTab() {
 
 function SettingsTab() {
   const canSaveSettings = useHasPermission("support.chat.edit");
+  const { toast } = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -891,6 +893,7 @@ function RoleFormDialog({
   editId?: string | null;
   onSaved: () => void;
 }) {
+  const { toast } = useToast();
   const [form, setForm] = useState<RoleFormState>(DEFAULT_FORM);
   const [aiDescription, setAiDescription] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -1191,6 +1194,7 @@ function RoleTemplatesTab() {
 }
 
 function AjkIdsTab() {
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
