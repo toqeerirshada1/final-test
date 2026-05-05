@@ -77,7 +77,40 @@ The monorepo contains shared libraries under `lib/` that are consumed by the art
 - `@workspace/integrations-gemini-ai` — Gemini AI integration utilities
 
 ### Environment Variables
-Secrets and environment variables are managed via Replit's environment secrets system. The project ships an encrypted `.env` bundle. For local/VPS development use `pnpm run env` to decrypt it.
+
+Environment variables are managed via an AES-256-GCM encrypted file (`.env.enc`). The system uses `scripts/env-manager.mjs` — a full interactive encrypted env management tool with 7-attempt lockout, hidden password input (Tab to toggle visibility), auto-generated secrets, and auto-backup on reset.
+
+**First-time setup:**
+```bash
+pnpm env:create    # Set master password, generate .env.enc
+```
+
+**Every session (or automatic on start):**
+```bash
+pnpm env:decrypt   # Decrypt .env.enc → writes .env + loads into process
+```
+
+**Other commands:**
+```bash
+pnpm env:update    # Interactive menu: add missing vars / change var / change password
+pnpm env:show      # View all variables (secrets masked)
+pnpm env:reset     # Delete .env.enc (creates backup first) → then recreate
+pnpm env           # Alias for env:decrypt
+```
+
+**Auto-decrypt on startup:** `scripts/launchers/start.mjs` calls `ensureEnv()` before launching services. It checks:
+1. `.env` exists → load it and continue
+2. `.env` missing, `.env.enc` exists → auto-prompts decrypt via env-manager
+3. Both missing → warns user to run `pnpm env:create`
+
+This means `pnpm replit-start` / `pnpm codespace-start` / `pnpm vps-start` / `pnpm local-start` all handle env automatically.
+
+**Security details:**
+- Encryption: AES-256-GCM with scrypt key derivation
+- Salt: fixed per-project (`AJKMart-Env-Salt-2024-v1`)
+- Max 7 password attempts before lockout
+- `.env` is gitignored; `.env.enc` is safe to commit
+- Secrets (JWT, tokens, keys) are auto-generated if left empty on create
 
 ### Validation and Support Scripts
 The API server includes a `check-permissions` validation script used by the Replit workflow, and the monorepo includes launcher scripts for Replit, Codespaces, VPS, and local development.
