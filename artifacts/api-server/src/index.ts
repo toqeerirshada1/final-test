@@ -11,6 +11,70 @@ process.on("uncaughtException", (err) => {
   console.error("[UncaughtException] Error:", err);
 });
 
+// ─── ENV FIRST-RUN CHECK ───────────────────────────────────────────────────
+const CRITICAL_VARS = ["DATABASE_URL", "JWT_SECRET"] as const;
+const IMPORTANT_VARS = [
+  "ADMIN_ACCESS_TOKEN_SECRET",
+  "ADMIN_REFRESH_TOKEN_SECRET",
+  "ADMIN_CSRF_SECRET",
+  "ERROR_REPORT_HMAC_SECRET",
+] as const;
+
+function checkEnv(): void {
+  const isProduction = process.env.NODE_ENV === "production";
+  const missing = CRITICAL_VARS.filter((k) => !process.env[k]);
+  const empty   = IMPORTANT_VARS.filter((k) => !process.env[k]);
+
+  if (missing.length === 0 && empty.length === 0) return;
+
+  const hr  = "═".repeat(66);
+  const pad = (s: string) => `║  ${s.padEnd(63)}║`;
+
+  const lines: string[] = [
+    `╔${hr}╗`,
+    pad("⚠️  AJKMart API — ENVIRONMENT NOT CONFIGURED"),
+    `╠${hr}╣`,
+  ];
+
+  if (missing.length > 0) {
+    lines.push(pad("CRITICAL (server will not function correctly):"));
+    for (const k of missing) lines.push(pad(`  ✗ ${k}`));
+    lines.push(pad(""));
+  }
+
+  if (empty.length > 0) {
+    lines.push(pad("MISSING (features may break or be insecure):"));
+    for (const k of empty) lines.push(pad(`  ! ${k}`));
+    lines.push(pad(""));
+  }
+
+  lines.push(`╠${hr}╣`);
+  lines.push(pad("To fix, run ONE of these from the project root:"));
+  lines.push(pad(""));
+  lines.push(pad("  First time:     pnpm env:create"));
+  lines.push(pad("  Already set up: pnpm env:decrypt"));
+  lines.push(pad("  Add missing:    pnpm env:update"));
+  lines.push(pad("  View current:   pnpm env:show"));
+  lines.push(pad(""));
+  lines.push(pad("  Then restart:   pnpm replit-start"));
+  lines.push(`╚${hr}╝`);
+
+  console.error("\n" + lines.join("\n") + "\n");
+
+  if (isProduction && missing.length > 0) {
+    console.error("[env:check] FATAL — critical vars missing in production. Exiting.");
+    process.exit(1);
+  }
+
+  if (!isProduction && missing.length > 0) {
+    console.warn("[env:check] Development mode — continuing despite missing critical vars.");
+    console.warn("[env:check] Run `pnpm env:decrypt` or `pnpm env:create` to fix this.\n");
+  }
+}
+
+checkEnv();
+// ──────────────────────────────────────────────────────────────────────────
+
 // Configuration from environment variables
 const PORT = parseInt(process.env.PORT ?? "4000", 10);
 const PORT_FALLBACK_ENABLE = (process.env.PORT_FALLBACK_ENABLE ?? "true").toLowerCase() === "true";
