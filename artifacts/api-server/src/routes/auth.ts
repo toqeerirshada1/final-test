@@ -1204,7 +1204,7 @@ router.post("/verify-otp", verifyCaptcha, sharedValidateBody(verifyOtpSchema), a
   const isCustomerAppContext = requestedRole === "customer" || appIdHeader === "customer" || appIdQuery === "customer";
 
   if (requestedRole && !isCustomerAppContext) {
-    const userRoles = (user.roles || user.roles || "customer").split(",").map((r: string) => r.trim());
+    const userRoles = (user.roles || "customer").split(",").map((r: string) => r.trim());
     if (!userRoles.includes(requestedRole)) {
       addSecurityEvent({ type: "cross_role_login_attempt", ip, userId: user.id, details: `User with roles [${user.roles}] tried to log in as ${requestedRole}`, severity: "high" });
       res.status(403).json({ error: "This account is not registered as a " + requestedRole + ". Please use the correct app.", wrongApp: true });
@@ -1401,7 +1401,7 @@ router.post("/verify-otp", verifyCaptcha, sharedValidateBody(verifyOtpSchema), a
     const deviceFingerprint = req.body.deviceFingerprint ?? "";
     const trustedDays = parseInt(settings["auth_trusted_device_days"] ?? "30", 10);
     if (!isDeviceTrusted(u, deviceFingerprint, trustedDays)) {
-      const tempToken = sign2faChallengeToken(u.id, u.phone ?? "", u.roles ?? "customer", u.roles ?? u.roles ?? "customer", "phone_otp");
+      const tempToken = sign2faChallengeToken(u.id, u.phone ?? "", u.roles ?? "customer", u.roles ?? "customer", "phone_otp");
       res.json({ requires2FA: true, tempToken, userId: u.id }); return;
     }
   }
@@ -1411,7 +1411,7 @@ router.post("/verify-otp", verifyCaptcha, sharedValidateBody(verifyOtpSchema), a
   writeAuthAuditLog("login_success", { userId: u.id, ip, userAgent: req.headers["user-agent"] ?? undefined, metadata: { phone, role: u.roles, method: "phone_otp" } });
 
   /* ── Issue short-lived access token + long-lived refresh token ── */
-  const accessToken  = signAccessToken(u.id, phone, u.roles ?? "customer", u.roles ?? u.roles ?? "customer", u.tokenVersion ?? 0);
+  const accessToken  = signAccessToken(u.id, phone, u.roles ?? "customer", u.roles ?? "customer", u.tokenVersion ?? 0);
   const { raw: refreshRaw, hash: refreshHash } = generateRefreshToken();
   const refreshExpiresAt = new Date(Date.now() + getRefreshTokenTtlDays() * 24 * 60 * 60 * 1000);
 
@@ -1436,7 +1436,7 @@ router.post("/verify-otp", verifyCaptcha, sharedValidateBody(verifyOtpSchema), a
      If the customer app context was detected and the user doesn't have the
      customer role, return a token + canAddCustomerRole flag so the frontend
      can offer the "Add Customer Access" flow from the wrong-app screen. ── */
-  const uRoles = (u.roles || u.roles || "customer").split(",").map((r: string) => r.trim());
+  const uRoles = (u.roles || "customer").split(",").map((r: string) => r.trim());
   if (isCustomerAppContext && !uRoles.includes("customer")) {
     addSecurityEvent({ type: "cross_role_login_attempt", ip, userId: u.id, details: `User with roles [${u.roles}] logged in to customer app context — offering add-role`, severity: "low" });
     res.json({
@@ -1454,7 +1454,7 @@ router.post("/verify-otp", verifyCaptcha, sharedValidateBody(verifyOtpSchema), a
         email:         u.email,
         username:      u.username,
         role:          u.roles,
-        roles:         u.roles ?? u.roles ?? "customer",
+        roles:         u.roles ?? "customer",
         avatar:        u.avatar,
         walletBalance: parseFloat(u.walletBalance ?? "0"),
         isActive:      u.isActive,
@@ -1485,7 +1485,7 @@ router.post("/verify-otp", verifyCaptcha, sharedValidateBody(verifyOtpSchema), a
       email:         u.email,
       username:      u.username,
       role:          u.roles,
-      roles:         u.roles ?? u.roles ?? "customer",
+      roles:         u.roles ?? "customer",
       avatar:        u.avatar,
       walletBalance: parseFloat(u.walletBalance ?? "0"),
       isActive:      u.isActive,
@@ -1542,7 +1542,7 @@ router.post("/vendor-register", async (req, res) => {
     return;
   }
 
-  const existingRoles = (user.roles || user.roles || "").split(",").map((r: string) => r.trim()).filter(Boolean);
+  const existingRoles = (user.roles || "").split(",").map((r: string) => r.trim()).filter(Boolean);
   if (existingRoles.includes("vendor")) {
     if (user.approvalStatus === "pending") {
       res.json({ success: true, status: "pending", message: "Your vendor application is already pending admin approval." });
@@ -1778,7 +1778,7 @@ async function handleRefreshToken(req: Request, res: any) {
   /* Rotate: revoke old token and issue a new one */
   await revokeRefreshToken(tokenHash);
 
-  const newAccessToken = signAccessToken(user.id, user.phone ?? "", user.roles ?? "customer", user.roles ?? user.roles ?? "customer", user.tokenVersion ?? 0);
+  const newAccessToken = signAccessToken(user.id, user.phone ?? "", user.roles ?? "customer", user.roles ?? "customer", user.tokenVersion ?? 0);
   const { raw: newRefreshRaw, hash: newRefreshHash } = generateRefreshToken();
   const newRefreshExpiresAt = new Date(Date.now() + getRefreshTokenTtlDays() * 24 * 60 * 60 * 1000);
 
@@ -2049,7 +2049,7 @@ router.post("/verify-email-otp", verifyCaptcha, async (req, res) => {
   const emailAppIdQuery = req.query.appId as string | undefined;
   const isEmailCustomerAppCtx = requestedEmailRole === "customer" || emailAppIdHeader === "customer" || emailAppIdQuery === "customer";
   if (requestedEmailRole && !isEmailCustomerAppCtx) {
-    const userRolesEmail = (user.roles || user.roles || "customer").split(",").map((r: string) => r.trim());
+    const userRolesEmail = (user.roles || "customer").split(",").map((r: string) => r.trim());
     if (!userRolesEmail.includes(requestedEmailRole)) {
       addSecurityEvent({ type: "cross_role_login_attempt", ip, userId: user.id, details: `User with roles [${user.roles}] tried email OTP login as ${requestedEmailRole}`, severity: "high" });
       res.status(403).json({ error: "This account is not registered as a " + requestedEmailRole + ". Please use the correct app.", wrongApp: true }); return;
@@ -2140,13 +2140,13 @@ router.post("/verify-email-otp", verifyCaptcha, async (req, res) => {
 
   /* Post-OTP customer app cross-role check: issue token + wrongApp flag so frontend
      can offer "Add Customer Access" flow from the wrong-app screen */
-  const emailUserRoles = (user.roles || user.roles || "customer").split(",").map((r: string) => r.trim());
+  const emailUserRoles = (user.roles || "customer").split(",").map((r: string) => r.trim());
   if (isEmailCustomerAppCtx && !emailUserRoles.includes("customer")) {
     addSecurityEvent({ type: "cross_role_login_attempt", ip, userId: user.id, details: `User with roles [${user.roles}] email-logged in to customer app context — offering add-role`, severity: "low" });
     res.json({
       token: accessToken, refreshToken: refreshRaw, expiresAt, sessionDays: getRefreshTokenTtlDays(),
       canAddCustomerRole: true, code: "cross_app_account", wrongApp: true,
-      user: { id: user.id, phone: user.phone, name: user.name, email: user.email, username: user.username, role: user.roles, roles: user.roles ?? user.roles ?? "customer", avatar: user.avatar, walletBalance: parseFloat(user.walletBalance ?? "0"), emailVerified: true, phoneVerified: user.phoneVerified ?? false },
+      user: { id: user.id, phone: user.phone, name: user.name, email: user.email, username: user.username, role: user.roles, roles: user.roles ?? "customer", avatar: user.avatar, walletBalance: parseFloat(user.walletBalance ?? "0"), emailVerified: true, phoneVerified: user.phoneVerified ?? false },
     });
     return;
   }
@@ -2157,7 +2157,7 @@ router.post("/verify-email-otp", verifyCaptcha, async (req, res) => {
     expiresAt,
     sessionDays:  getRefreshTokenTtlDays(),
     pendingApproval: false,
-    user: { id: user.id, phone: user.phone, name: user.name, email: user.email, username: user.username, role: user.roles, roles: user.roles ?? user.roles ?? "customer", avatar: user.avatar, walletBalance: parseFloat(user.walletBalance ?? "0"), emailVerified: true, phoneVerified: user.phoneVerified ?? false },
+    user: { id: user.id, phone: user.phone, name: user.name, email: user.email, username: user.username, role: user.roles, roles: user.roles ?? "customer", avatar: user.avatar, walletBalance: parseFloat(user.walletBalance ?? "0"), emailVerified: true, phoneVerified: user.phoneVerified ?? false },
   });
 });
 
@@ -2241,7 +2241,7 @@ async function handleUnifiedLogin(req: Request, res: any) {
   /* ── Cross-role enforcement ── */
   const requestedRoleLogin = parsed.data.role;
   if (requestedRoleLogin) {
-    const userRolesLogin = (user.roles || user.roles || "customer").split(",").map((r: string) => r.trim());
+    const userRolesLogin = (user.roles || "customer").split(",").map((r: string) => r.trim());
     if (!userRolesLogin.includes(requestedRoleLogin)) {
       addSecurityEvent({ type: "cross_role_login_attempt", ip, userId: user.id, details: `User with roles [${user.roles}] tried to log in as ${requestedRoleLogin}`, severity: "high" });
       res.status(403).json({ error: "This account is not registered as a " + requestedRoleLogin + ". Please use the correct app.", wrongApp: true }); return;
@@ -2586,7 +2586,7 @@ router.post("/complete-profile", async (req, res) => {
     } catch {}
   }
 
-  const accessToken = signAccessToken(updated!.id, updated!.phone ?? "", updated!.roles ?? "customer", updated!.roles ?? updated!.roles ?? "customer", updated!.tokenVersion ?? 0);
+  const accessToken = signAccessToken(updated!.id, updated!.phone ?? "", updated!.roles ?? "customer", updated!.roles ?? "customer", updated!.tokenVersion ?? 0);
   const { raw: refreshRaw, hash: refreshHash } = generateRefreshToken();
   const refreshExpiresAt = new Date(Date.now() + getRefreshTokenTtlDays() * 24 * 60 * 60 * 1000);
 
@@ -3495,7 +3495,7 @@ function parseUserAgent(ua?: string): { deviceName: string; browser: string; os:
 }
 
 async function issueTokensForUser(user: any, ip: string, method: string, userAgent?: string, req?: Request, res?: Response) {
-  const accessToken = signAccessToken(user.id, user.phone ?? "", user.role ?? "customer", user.roles ?? user.role ?? "customer", user.tokenVersion ?? 0);
+  const accessToken = signAccessToken(user.id, user.phone ?? "", user.roles ?? "customer", user.roles ?? "customer", user.tokenVersion ?? 0);
   const { raw: refreshRaw, hash: refreshHash } = generateRefreshToken();
   const refreshExpiresAt = new Date(Date.now() + getRefreshTokenTtlDays() * 24 * 60 * 60 * 1000);
 
@@ -3548,7 +3548,7 @@ async function issueTokensForUser(user: any, ip: string, method: string, userAge
     sessionDays: getRefreshTokenTtlDays(),
     user: {
       id: user.id, phone: user.phone, name: user.name, email: user.email,
-      role: user.role, roles: user.roles, avatar: user.avatar,
+      role: user.roles, roles: user.roles, avatar: user.avatar,
       walletBalance: parseFloat(user.walletBalance ?? "0"),
       isActive: user.isActive, cnic: user.cnic, city: user.city,
       emailVerified: user.emailVerified ?? false, phoneVerified: user.phoneVerified ?? false,
@@ -3633,7 +3633,7 @@ router.post("/social/google", async (req, res) => {
   const requestedSocialRole = (req.body?.role as string | undefined) ?? null;
   if (requestedSocialRole && requestedSocialRole !== "customer") {
     if (user) {
-      const userRoles = (user.roles || user.roles || "").split(",").map((r: string) => r.trim());
+      const userRoles = (user.roles || "").split(",").map((r: string) => r.trim());
       if (!userRoles.includes(requestedSocialRole)) {
         addSecurityEvent({ type: "cross_role_social_login_attempt", ip, details: `Social Google cross-role: requested=${requestedSocialRole} user.roles=${user.roles}`, severity: "medium" });
         res.status(403).json({ error: `No ${requestedSocialRole} account found for this Google account. Please use the correct app.`, wrongApp: true }); return;
@@ -3731,7 +3731,7 @@ router.post("/social/facebook", async (req, res) => {
   const requestedFbSocialRole = (req.body?.role as string | undefined) ?? null;
   if (requestedFbSocialRole && requestedFbSocialRole !== "customer") {
     if (user) {
-      const userRoles = (user.roles || user.roles || "").split(",").map((r: string) => r.trim());
+      const userRoles = (user.roles || "").split(",").map((r: string) => r.trim());
       if (!userRoles.includes(requestedFbSocialRole)) {
         addSecurityEvent({ type: "cross_role_social_login_attempt", ip, details: `Social Facebook cross-role: requested=${requestedFbSocialRole} user.roles=${user.roles}`, severity: "medium" });
         res.status(403).json({ error: `No ${requestedFbSocialRole} account found for this Facebook account. Please use the correct app.`, wrongApp: true }); return;
@@ -4541,7 +4541,7 @@ router.post("/firebase-verify", async (req, res) => {
   }
 
   /* Set Firebase Custom Claims so next Firebase idToken refresh carries the role */
-  setFirebaseCustomClaims(decoded.uid, { role: user.role ?? user.roles ?? "customer", roles: user.roles ?? "customer", userId: user.id }).catch(() => {});
+  setFirebaseCustomClaims(decoded.uid, { role: user.roles ?? "customer", roles: user.roles ?? "customer", userId: user.id }).catch(() => {});
 
   /* Issue platform tokens */
   const userAgent = req.headers["user-agent"] as string | undefined;

@@ -83,7 +83,7 @@ router.get("/profile", anyUserAuth, async (req, res) => {
     email: user.email,
     username: user.username ?? null,
     role: user.roles,
-    roles: user.roles ?? user.roles ?? "customer",
+    roles: user.roles ?? "customer",
     avatar: user.avatar,
     walletBalance: parseFloat(user.walletBalance ?? "0"),
     isActive: user.isActive,
@@ -116,11 +116,11 @@ router.post("/add-role", anyUserAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) { sendNotFound(res, "User not found"); return; }
 
-  const existingRoles = (user.roles || user.roles || "customer").split(",").map((r: string) => r.trim()).filter(Boolean);
+  const existingRoles = (user.roles ?? "customer").split(",").map((r: string) => r.trim()).filter(Boolean);
   if (existingRoles.includes("customer")) {
     sendSuccess(res, {
       role: user.roles,
-      roles: user.roles ?? user.roles ?? "customer",
+      roles: user.roles ?? "customer",
     }, "Customer role already active on this account.");
     return;
   }

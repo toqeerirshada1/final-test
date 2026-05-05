@@ -103,12 +103,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
   /* Initialize battery listener once at mount */
   useEffect(() => {
-    type BatteryManager = { level: number; addEventListener: (event: string, cb: () => void) => void };
+    type BatteryManager = { level: number; addEventListener: (event: string, cb: () => void) => void; removeEventListener: (event: string, cb: () => void) => void };
+    let batt: BatteryManager | undefined;
+    const onLevelChange = () => { if (batt) batteryLevelRef.current = batt.level; };
     (navigator as unknown as { getBattery?: () => Promise<BatteryManager> }).getBattery?.()
-      .then((batt) => {
+      .then((b) => {
+        batt = b;
         batteryLevelRef.current = batt.level;
-        batt.addEventListener("levelchange", () => { batteryLevelRef.current = batt.level; });
+        batt.addEventListener("levelchange", onLevelChange);
       }).catch(() => {});
+    return () => { batt?.removeEventListener("levelchange", onLevelChange); };
   }, []);
 
   /* Heartbeat effect - keyed on the socket instance so connect listeners rebind */
