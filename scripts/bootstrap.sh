@@ -46,6 +46,7 @@ set +a
 if [ -n "${DATABASE_URL:-}" ]; then export DATABASE_URL; fi
 if [ -n "${REDIS_URL:-}" ]; then export REDIS_URL; fi
 if [ -n "${VITE_API_PROXY_TARGET:-}" ]; then export VITE_API_PROXY_TARGET; fi
+if [ -z "${VITE_API_PROXY_TARGET:-}" ]; then export VITE_API_PROXY_TARGET="http://127.0.0.1:5000"; fi
 
 DB_STAMP="node_modules/.bootstrap-db-stamp"
 DB_URL="${DATABASE_URL:-}"
