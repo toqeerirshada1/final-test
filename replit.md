@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Monorepo Structure
 
-The project is structured as a pnpm workspace monorepo, enforcing pnpm usage. It includes shared libraries for database schema, API client, validation, internationalization, and integrations, consumed by various deployable applications such as the API server, admin panel, rider app, vendor app, and customer super-app. TypeScript project references are used for efficient type-checking and build processes.
+The project is structured as a pnpm workspace monorepo, enforcing pnpm usage. It includes shared libraries for database schema, API client, validation, internationalization, integrations, phone utilities, and shared admin timing utilities, consumed by various deployable applications such as the API server, admin panel, rider app, vendor app, and customer super-app. TypeScript project references are used for efficient type-checking and build processes.
 
 ### Applications
 
@@ -32,7 +32,7 @@ The customer app uses Expo, supporting lazy-loaded service modules that are togg
 
 ### Data Layer
 
-PostgreSQL is the chosen database, with schema managed by Drizzle ORM. Drizzle Kit is used for migrations. The schema is organized by domain, covering users, orders, products, rides, wallets, and platform settings.
+PostgreSQL is the chosen database, with schema managed by Drizzle ORM. Drizzle Kit is used for migrations. The schema is organized by domain, covering users, orders, products, rides, wallets, platform settings, permissions, and integration-related data.
 
 ### Key Architectural Decisions
 
@@ -78,6 +78,9 @@ The monorepo contains shared libraries under `lib/` that are consumed by the art
 
 ### Environment Variables
 Secrets and environment variables are managed via Replit's environment secrets system. The project ships an encrypted `.env` bundle. For local/VPS development use `pnpm run env` to decrypt it.
+
+### Validation and Support Scripts
+The API server includes a `check-permissions` validation script used by the Replit workflow, and the monorepo includes launcher scripts for Replit, Codespaces, VPS, and local development.
 
 ## External Dependencies
 
