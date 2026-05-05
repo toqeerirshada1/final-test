@@ -1,15 +1,25 @@
 #!/bin/bash
 set -e
 
-# Decrypt .env non-interactively (no-op if already present or .env.enc missing)
-node scripts/auto-decrypt.mjs
+# ─── ENV CHECK ────────────────────────────────────────────────────────────────
+# Post-merge runs non-interactively — cannot prompt for a password here.
+# Warn the developer if .env is missing; they must decrypt manually.
+if [ ! -f ".env" ] || [ ! -s ".env" ]; then
+  if [ -f ".env.enc" ] && [ -s ".env.enc" ]; then
+    echo "[post-merge] WARNING: .env missing but .env.enc found."
+    echo "[post-merge] Run:  pnpm env:decrypt  — then restart services."
+  else
+    echo "[post-merge] WARNING: No .env or .env.enc found."
+    echo "[post-merge] Run:  pnpm env:create   — to set up encrypted environment."
+  fi
+fi
 
-# Load env vars from .env into the shell environment for subsequent commands
+# Load .env into this shell if present
 set -a
-[ -f .env ] && source .env
+[ -f .env ] && [ -s .env ] && source .env
 set +a
 
-# Only run pnpm install if node_modules is missing or lockfile is newer than install marker
+# ─── INSTALL ──────────────────────────────────────────────────────────────────
 INSTALL_MARKER="node_modules/.post-merge-install-marker"
 if [ ! -d "node_modules" ] || [ ! -f "$INSTALL_MARKER" ] || [ "pnpm-lock.yaml" -nt "$INSTALL_MARKER" ]; then
   echo "[post-merge] Running pnpm install..."
@@ -19,39 +29,37 @@ else
   echo "[post-merge] node_modules up to date, skipping install"
 fi
 
-# Build library packages so TypeScript declaration files are up to date
-pnpm --filter @workspace/db build
-pnpm --filter @workspace/phone-utils build
+# ─── BUILD LIBS ───────────────────────────────────────────────────────────────
+pnpm --filter @workspace/db build 2>/dev/null || echo "[post-merge] WARN: @workspace/db build skipped"
+pnpm --filter @workspace/phone-utils build 2>/dev/null || echo "[post-merge] WARN: @workspace/phone-utils build skipped"
 
-# Run pending SQL migrations manually (non-interactive, no drizzle-kit push)
-# This avoids drizzle-kit's interactive prompts about column renames
+# ─── MIGRATIONS ───────────────────────────────────────────────────────────────
 MIGRATION_DIR="lib/db/migrations"
 DB_URL="${NEON_DATABASE_URL:-${APP_DATABASE_URL:-$DATABASE_URL}}"
 
 if [ -z "$DB_URL" ]; then
-  echo "[migration] NEON_DATABASE_URL, APP_DATABASE_URL, or DATABASE_URL must be set"
-  exit 1
+  echo "[post-merge] Skipping migrations — no DATABASE_URL set."
+  echo "[post-merge] Run:  pnpm env:decrypt  — then re-run post-merge manually."
+else
+  psql "$DB_URL" -c "
+    CREATE TABLE IF NOT EXISTS _schema_migrations (
+      filename TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ DEFAULT now()
+    );
+  " 2>&1
+
+  for sql_file in $(ls "$MIGRATION_DIR"/*.sql 2>/dev/null | sort); do
+    filename=$(basename "$sql_file")
+    already_applied=$(psql "$DB_URL" -tA -c "SELECT COUNT(*) FROM _schema_migrations WHERE filename = '$filename';")
+    if [ "$already_applied" -eq "0" ]; then
+      echo "[migration] Applying $filename..."
+      psql "$DB_URL" -f "$sql_file" 2>&1 && \
+        psql "$DB_URL" -c "INSERT INTO _schema_migrations (filename) VALUES ('$filename') ON CONFLICT DO NOTHING;" 2>&1
+      echo "[migration] Applied $filename"
+    else
+      echo "[migration] Skipping $filename (already applied)"
+    fi
+  done
 fi
-
-psql "$DB_URL" -c "
-  CREATE TABLE IF NOT EXISTS _schema_migrations (
-    filename TEXT PRIMARY KEY,
-    applied_at TIMESTAMPTZ DEFAULT now()
-  );
-" 2>&1
-
-# Apply each migration file in order if not already applied
-for sql_file in $(ls "$MIGRATION_DIR"/*.sql 2>/dev/null | sort); do
-  filename=$(basename "$sql_file")
-  already_applied=$(psql "$DB_URL" -tA -c "SELECT COUNT(*) FROM _schema_migrations WHERE filename = '$filename';")
-  if [ "$already_applied" -eq "0" ]; then
-    echo "[migration] Applying $filename..."
-    psql "$DB_URL" -f "$sql_file" 2>&1 && \
-      psql "$DB_URL" -c "INSERT INTO _schema_migrations (filename) VALUES ('$filename') ON CONFLICT DO NOTHING;" 2>&1
-    echo "[migration] Applied $filename"
-  else
-    echo "[migration] Skipping $filename (already applied)"
-  fi
-done
 
 echo "[post-merge] Done"

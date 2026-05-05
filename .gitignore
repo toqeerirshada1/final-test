@@ -57,5 +57,6 @@ Thumbs.db
 
 # Encrypted secrets — must be committed
 !secrets.enc
+!.env.enc
 !.replit
 !replit.nix

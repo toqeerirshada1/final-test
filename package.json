@@ -7,7 +7,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "start:all": "python3.11 -m pip install -q -r requirements.txt && python3.11 decrypt_and_run.py",
+    "start:all": "node scripts/launchers/start.mjs replit",
     "stop:all": "node scripts/dev-ctl.mjs stop all",
     "status:all": "node scripts/dev-ctl.mjs status all",
     "start:api": "node scripts/dev-ctl.mjs start api",

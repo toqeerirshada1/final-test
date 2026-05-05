@@ -6,6 +6,16 @@ import { initErrorReporter } from "./lib/error-reporter";
 import { patchLeafletDefaultIcon } from "./lib/leafletIconFix";
 import { checkApiHealth } from "./lib/checkApiHealth";
 
+if (import.meta.env.DEV) {
+  const apiTarget = import.meta.env.VITE_API_PROXY_TARGET || import.meta.env.VITE_API_BASE_URL;
+  if (!apiTarget) {
+    console.group("%c⚠️ AJKMart Rider — ENV NOT CONFIGURED", "color:#f59e0b;font-weight:bold;font-size:13px");
+    console.warn("VITE_API_PROXY_TARGET is not set. API proxy may point to wrong host.");
+    console.info("Fix: run  pnpm env:decrypt  from the project root, then restart.");
+    console.groupEnd();
+  }
+}
+
 initErrorReporter();
 
 /* Apply the Leaflet default-marker patch once at app boot so every map
