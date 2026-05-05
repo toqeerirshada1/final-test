@@ -57,6 +57,39 @@ function loadEnvFile(envPath) {
   return true;
 }
 
+function ensureEnv() {
+  const envPath = path.join(root, ".env");
+  const encPath = path.join(root, ".env.enc");
+  const managerPath = path.join(root, "scripts", "env-manager.mjs");
+
+  if (fs.existsSync(envPath) && fs.statSync(envPath).size > 0) {
+    loadEnvFile(envPath);
+    log(".env loaded successfully");
+    return;
+  }
+
+  if (fs.existsSync(encPath) && fs.statSync(encPath).size > 0) {
+    log(".env not found but .env.enc exists — launching env-manager to decrypt...");
+    if (!dryRun) {
+      const r = spawnSync("node", [managerPath, "decrypt"], { cwd: root, stdio: "inherit" });
+      if (r.status !== 0) {
+        err("env-manager decrypt failed or was cancelled. Services may not start correctly.");
+        warn("Run:  pnpm env:decrypt  to try again manually.");
+      } else {
+        loadEnvFile(envPath);
+        log(".env loaded after decrypt");
+      }
+    } else {
+      log("(dry-run) would run: node scripts/env-manager.mjs decrypt");
+    }
+    return;
+  }
+
+  warn(".env and .env.enc both missing!");
+  warn("Run:  pnpm env:create  to set up encrypted environment.");
+  warn("Continuing without env — services requiring DB/secrets will fail.");
+}
+
 function detectEnv() {
   const isReplit = !!(process.env.REPL_ID || process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_USER);
   const isCodespaces = String(process.env.CODESPACES).toLowerCase() === "true" || !!process.env.CODESPACE_NAME;
@@ -208,7 +241,7 @@ function installShellWrappers() {
 async function profileReplit() {
   log("Detected profile: replit");
   if (!process.env.REPLIT_DEV_DOMAIN) warn("REPLIT_DEV_DOMAIN not set — preview URLs may be unavailable");
-  loadEnvFile(path.join(root, ".env"));
+  ensureEnv();
   ensureNodeModules();
 
   const apiPort = process.env.PORT_API || "5000";
@@ -307,7 +340,7 @@ async function profileCodespace() {
   log("Detected profile: codespace");
   const codespaceName = process.env.CODESPACE_NAME;
   if (!codespaceName) warn("CODESPACE_NAME not set — public URL pattern will fall back to localhost");
-  loadEnvFile(path.join(root, ".env"));
+  ensureEnv();
   ensureNodeModules();
 
   const apiPort = process.env.PORT_API || "8080";
@@ -409,7 +442,7 @@ function reloadCaddyOrNginx(proxy) {
 
 async function profileVps() {
   log("Detected profile: vps");
-  loadEnvFile(path.join(root, ".env")) || warn(".env not found at project root — VPS run usually expects one");
+  ensureEnv();
 
   // ensure tooling
   if (!hasCmd("node")) {
@@ -519,18 +552,7 @@ async function profileLocal() {
     process.exit(1);
   }
 
-  // .env bootstrap
-  const envPath = path.join(root, ".env");
-  if (!fs.existsSync(envPath)) {
-    const example = path.join(root, "deploy", "env.example");
-    if (fs.existsSync(example)) {
-      log(".env missing — copying deploy/env.example -> .env");
-      if (!dryRun) fs.copyFileSync(example, envPath);
-    } else {
-      warn(".env missing and deploy/env.example not found; create one before running services that need DB");
-    }
-  }
-  loadEnvFile(envPath);
+  ensureEnv();
 
   ensureNodeModules();
 
