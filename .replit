@@ -44,6 +44,22 @@ args = "Rider App"
 task = "workflow.run"
 args = "Vendor App"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:api"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:admin"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:vendor"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:rider"
+
 [[workflows.workflow]]
 name = "check-permissions"
 author = "agent"
@@ -102,6 +118,50 @@ outputType = "console"
 task = "shell.exec"
 args = "PORT=3002 BASE_PATH=/vendor/ VITE_API_PROXY_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/vendor-app dev"
 waitForPort = 3002
+
+[[workflows.workflow]]
+name = "typecheck:api"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/lib/db && pnpm build && cd /home/runner/workspace/lib/phone-utils && pnpm build && cd /home/runner/workspace/artifacts/api-server && pnpm tsc --noEmit"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck:admin"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/artifacts/admin && pnpm tsc --noEmit"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck:vendor"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/artifacts/vendor-app && pnpm tsc --noEmit"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck:rider"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/artifacts/rider-app && pnpm tsc --noEmit"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
